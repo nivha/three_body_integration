@@ -25,9 +25,13 @@ def get_R(x):
 
 @jit(nopython=True)
 def getA(G, m1, m2, m3, R):
-    a12_ = (G/norm(R[0:3])**3) * R[0:3]
-    a13_ = (G/norm(R[3:6])**3) * R[3:6]
-    a23_ = (G/norm(R[6:9])**3) * R[6:9]
+    r12 = R[0:3]
+    r13 = R[3:6]
+    r23 = R[6:9]
+
+    a12_ = (G/norm(r12)**3) * r12
+    a13_ = (G/norm(r13)**3) * r13
+    a23_ = (G/norm(r23)**3) * r23
     A = np.concatenate(((a12_*m2 + a13_*m3), (-a12_*m1 + a23_*m3), (-a13_*m1 - a23_*m2)))
     return A
 
@@ -104,7 +108,6 @@ def update_closest_approach(i, caidx, closest_approach_r, save_last, ca_saveall,
         r12_cur = norm(x_cur[0:3] - x_cur[3:6])
 
         if r12_cur > r12_prev and r12_prev2 > r12_prev:
-            # print('>>> ca:', caidx)
             closest_approach_r = r12_prev
             Ica[caidx] = i - 1
             Xca[:, caidx] = Xlast[:, (i - 1) % save_last]
@@ -185,10 +188,10 @@ def drift(x, s, v):
     K = get_K(v, s.m1, s.m2, s.m3)
     dt = s.dt0 * fU(s.E0 - K, s.U_init)
     x += v * dt
-    return x
+    return x, dt
 
 
-# @jit(nopython=True)
+@jit(nopython=True)
 def advance_state(s, N):
     """ s: simulation state, numba.jitclass containing all relevant variables
         N: iterate simulation up to N iterations (from s.i)
@@ -202,19 +205,20 @@ def advance_state(s, N):
     # calc x1/2 for leapfrog
     K = get_K(v, s.m1, s.m2, s.m3)
     dt = s.dt0 * fU(s.E0 - K, s.U_init)
-    x += v * dt/2
+    x += v * dt / 2
 
     while s.i < N:
 
         # save params once in a while
         save_state_params(s, x, v, dt, t)
 
+        # closest approach handling
+        s.caidx, s.closest_approach_r = update_closest_approach(s.i, s.caidx, s.closest_approach_r, s.save_last,
+                                                                s.ca_saveall,
+                                                                s.Xlast, s.Vlast, s.Tlast, s.Ica, s.Xca, s.Vca, s.Tca)
+
         # get distances between masses
         R = get_R(x)
-
-        # closest approach handling
-        s.caidx, s.closest_approach_r = update_closest_approach(s.i, s.caidx, s.closest_approach_r, s.save_last, s.ca_saveall,
-                                                                s.Xlast, s.Vlast, s.Tlast, s.Ica, s.Xca, s.Vca, s.Tca)
 
         # Stopping Conditions:
         s.nP, s.steps_per_P, s.fin_reason = check_stopping_conditions(x, v, t,
@@ -229,8 +233,8 @@ def advance_state(s, N):
         # Kick (update v)
         v = kick(v, s, R)
 
-        # Drift (update x)
-        x = drift(x, s, v)
+        # Drift (update x and get dt)
+        x, dt = drift(x, s, v)
 
         # Time (update t)
         t += dt

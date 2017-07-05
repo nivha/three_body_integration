@@ -140,7 +140,7 @@ if __name__ == "__main__":
         'dt00': np.nan,
         'max_periods': np.int64(3000),  # -1 for don't care
         'save_every': np.int64(10),
-        'samples_per_Pcirc': np.int64(1000),
+        'samples_per_Pcirc': np.int64(2000),
         'rmin': r_dissip,
         'tmax': 5e9 * year / t_unit,
         'rmax': 50 * params_phys['a'],
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
     }
 
-    run_simulation(np.int64(3e5), params_phys, params_sim, RESULT_PATH_PC_LOCAL, save_as='mat', post_process=True)
+    run_simulation(np.int64(1e7), params_phys, params_sim, RESULT_PATH_PC_LOCAL, save_as='mat', post_process=True)
     # continue_simulation(1e8, RESULT_MID_PATH_PC_LOCAL, RESULT_PATH_PC_LOCAL, post_process=True)
 
     print("done")
