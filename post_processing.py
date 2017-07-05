@@ -54,7 +54,7 @@ def _post_process(s, scaling_params):
     op.x1 = op.X[0:3, :]
     op.x2 = op.X[3:6, :]
     op.x3 = op.X[6:9, :]
-    op.r21 = op.x1 - op.x2
+    op.r21 = op.x2 - op.x1
     op.r13 = op.x3 - op.x1
     op.r23 = op.x3 - op.x2
     op.K = 0.5 * (op.m1 * op.v12 + s.m2 * op.v22 + op.m3 * op.v32)
@@ -63,7 +63,7 @@ def _post_process(s, scaling_params):
 
     # inner orbit
     op.r_in = op.r21
-    op.v_in = op.V[0:3, :] - op.V[3:6, :]
+    op.v_in = op.V[3:6, :] - op.V[0:3, :]
 
     op.r2 = abs2_each(op.r_in)
     op.v2 = abs2_each(op.v_in)

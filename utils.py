@@ -154,10 +154,10 @@ class OrbitalParameters:
         s.jv0, s.ev0 = get_je(e, inclination, Omega, omega)
         s.Jv = s.jv0 * sqrt(G * s.Min * a)
         s.x0_in, s.v0_in = get_xv(s.ev0, s.Jv, a, s.f_in)
-        s.x01 = (m2 / s.Min) * s.x0_in + s.x0_cms12
-        s.v01 = (m2 / s.Min) * s.v0_in + s.v0_cms12
-        s.x02 = -(m1 / s.Min) * s.x0_in + s.x0_cms12
-        s.v02 = -(m1 / s.Min) * s.v0_in + s.v0_cms12
+        s.x01 = -(m2 / s.Min) * s.x0_in + s.x0_cms12
+        s.v01 = -(m2 / s.Min) * s.v0_in + s.v0_cms12
+        s.x02 = (m1 / s.Min) * s.x0_in + s.x0_cms12
+        s.v02 = (m1 / s.Min) * s.v0_in + s.v0_cms12
 
         # make state vectors
         s.x0 = np.concatenate((s.x01, s.x02, s.x03))

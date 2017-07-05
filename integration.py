@@ -188,7 +188,7 @@ def drift(x, s, v):
     return x
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def advance_state(s, N):
     """ s: simulation state, numba.jitclass containing all relevant variables
         N: iterate simulation up to N iterations (from s.i)
