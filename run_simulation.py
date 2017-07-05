@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jun 30 10:13:41 2017
+
+@author: Niv Haim (Weizmann Institute of Science)
+"""
+
 import numpy as np
 from sim.utils import year, t_unit, r_dissip, Msun, G, au, N
 import os
