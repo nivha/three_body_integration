@@ -58,6 +58,7 @@ def get_K(v, m1, m2, m3):
 
 @jit(nopython=True)
 def get_E(G, mi, xi, vi, mj, xj, vj, xp, vp, mp):
+    """ Returns the energy of mp and (mi,mj) combined """
     m_in = mi + mj
     cms_in = (mi * xi + mj * xj) / m_in
     v_in = (mi * vi + mj * vj) / m_in
@@ -161,6 +162,18 @@ def check_stopping_conditions(x, v, t, nP, steps_per_P, i, N, P_in, G, R, m1, m2
 
 
 @jit(nopython=True)
+def update_dE_max(s, x, v, dt):
+    R = get_R(x - v * dt/2)
+    U = get_U(s.G, s.m1, s.m2, s.m3, R)
+    K = get_K(v, s.m1, s.m2, s.m3)
+    E = U + K
+    dE = np.abs(E/s.E0 - 1)
+    if dE > s.dE_max:
+        s.dE_max = dE
+        s.dE_max_i = s.i
+
+
+@jit(nopython=True)
 def save_state_params(s, x, v, dt, t):
     if s.i % s.save_every == 0:
         s.X[:, s.idx] = x - v * dt / 2
@@ -209,8 +222,9 @@ def advance_state(s, N):
 
     while s.i < N:
 
-        # save params once in a while
+        # save params
         save_state_params(s, x, v, dt, t)
+        if (s.nP + 1) % 1000 == 0: update_dE_max(s, x, v, dt)
 
         # closest approach handling
         s.caidx, s.closest_approach_r = update_closest_approach(s.i, s.caidx, s.closest_approach_r, s.save_last,

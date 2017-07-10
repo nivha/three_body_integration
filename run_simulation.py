@@ -107,7 +107,6 @@ def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_d
 
 
 if __name__ == "__main__":
-    # RESULT_MID_PATH_PC_LOCAL = os.path.join('c:', os.sep, 'tmp', 'sim1.npy')
     RESULT_PATH_PC_LOCAL = os.path.join('c:', os.sep, 'tmp', 'sim1.mat')
 
     # job_number = 965
@@ -146,7 +145,6 @@ if __name__ == "__main__":
         'rmax': 50 * params_phys['a'],
         'save_last': np.int64(10),
         'ca_saveall': np.int64(0),
-
     }
 
     run_simulation(np.int64(1e7), params_phys, params_sim, RESULT_PATH_PC_LOCAL, save_as='mat', post_process=True)

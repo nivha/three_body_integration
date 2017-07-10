@@ -34,6 +34,8 @@ spec = [
     ('steps_per_P', nb.int64),
     ('closest_approach_r', nb.double),
     ('fin_reason', nb.int64),
+    ('dE_max', nb.double),
+    ('dE_max_i', nb.double),
 
     # configuration variables
     # physical
@@ -88,7 +90,7 @@ class SimState(object):
         self.Ica = np.empty(100000, dtype=np.int64)
 
         # initialize integration indexes to zero
-        self.i = self.nP = self.idx = self.caidx = self.steps_per_P = 0
+        self.i = self.nP = self.idx = self.caidx = self.steps_per_P = self.dE_max = self.dE_max_i = 0
         self.closest_approach_r = np.infty
         self.fin_reason = REASON_NONE
 

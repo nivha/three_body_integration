@@ -1,6 +1,7 @@
 
 import os
 import numpy as np
+import time
 from sim.utils import r_dissip, year, t_unit
 from sim.run_simulation import run_simulation
 
@@ -33,7 +34,10 @@ params_sim = {
 }
 
 RESULT_PATH_PC_LOCAL = os.path.join('c:', os.sep, 'tmp', 'sim1.mat')
+
+start = time.time()
 run_simulation(np.int64(1e7), params_phys, params_sim,
                RESULT_PATH_PC_LOCAL, save_as='mat', post_process=True)
+print('time:', time.time() - start)
 
 print("done")
