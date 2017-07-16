@@ -60,8 +60,6 @@ spec = [
     ('save_every_P', nb.int64),
     ('samples_per_Pcirc', nb.int64),
     ('save_last', nb.int64),
-    ('rmin', nb.double),
-    ('tmax', nb.double),
     ('rmax', nb.double),
     ('ca_saveall', nb.double),
 
@@ -99,7 +97,7 @@ class SimState(object):
 
 def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
                          f_out, inclination, Omega, omega, rper_over_a, eper,
-                         dt00, max_periods, save_every, save_every_P, samples_per_Pcirc, save_last, rmin, tmax, rmax, ca_saveall):
+                         dt00, max_periods, save_every, save_every_P, samples_per_Pcirc, save_last, rmax, ca_saveall):
     # dump args to properties
     s.G = G
     s.m1 = m1
@@ -120,8 +118,6 @@ def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
     s.save_every_P = save_every_P
     s.samples_per_Pcirc = samples_per_Pcirc
     s.save_last = save_last
-    s.rmin = rmin
-    s.tmax = tmax
     s.rmax = rmax
     s.ca_saveall = ca_saveall
 
