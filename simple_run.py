@@ -30,7 +30,7 @@ params_sim = {
     'tmax': 5e9 * year / t_unit,
     'rmax': 50 * params_phys['a'],
     'save_last': np.int64(10),
-    'ca_saveall': np.int64(0),
+    'ca_saveall': np.int64(1),
 }
 
 RESULT_PATH_PC_LOCAL = os.path.join('c:', os.sep, 'tmp', 'sim1.mat')

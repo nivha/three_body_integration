@@ -24,7 +24,7 @@ r_dissip_cm = 4e9  # in cm
 r_dissip = r_dissip_cm / au  # in scaled units
 
 # Simulation finish reasons
-REASON_NONE, FINISHED_ITERATIONS, BAD, TNAN, MAX_PERIODS, TMAX, RMIN, SYSTEM_BROKEN = range(8)
+REASON_NONE, FINISHED_ITERATIONS, BAD, TNAN, MAX_PERIODS, SYSTEM_BROKEN = range(6)
 
 # Algebraic operations
 abs2_each = lambda x: np.sum(np.square(x), axis=0)  # squared norm for each column
@@ -117,7 +117,8 @@ def get_dt0(G, m1, m2, samples_per_Pcirc, dt00, U0, a_in0, x0_in):
     U_init = U0
     if not np.isnan(dt00):
         dt0 = dt00 * np.sqrt(a_in0**3 / G / Min)
-        U_init = - G * m1 * m2 / norm(x0_in)
+        # U_init = - G * m1 * m2 / norm(x0_in)
+        U_init = - G * m1 * m2 / norm(a_in0)
 
     print("dt0:", dt0)
     return dt0, U_init
@@ -133,7 +134,7 @@ class OrbitalParameters:
 
     def set_orbital_parameters(s, G, m1, m2, m3, e, a, M0_in, rper_over_a, eper, f_out, inclination, Omega, omega):
         # basic params
-        s.aper = rper_over_a / (1 - eper)
+        s.aper = rper_over_a #/ (1 - eper)
         s.Min = m1 + m2
         s.Mout = m1 + m2 + m3
         s.muin = m1 * m2 / s.Min

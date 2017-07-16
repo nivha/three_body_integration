@@ -8,7 +8,7 @@ Created on Fri Jun 30 10:13:41 2017
 import numpy as np
 from numpy.linalg import norm
 from numba import jit
-from sim.utils import REASON_NONE, TNAN, MAX_PERIODS, TMAX, RMIN, SYSTEM_BROKEN, BAD, FINISHED_ITERATIONS
+from sim.utils import REASON_NONE, TNAN, MAX_PERIODS, SYSTEM_BROKEN, BAD, FINISHED_ITERATIONS
 
 
 @jit(nopython=True)
@@ -92,34 +92,36 @@ def is_system_broken(G, R, x, v, m1, m2, m3, rmax):
 
 
 @jit(nopython=True)
-def update_closest_approach(i, caidx, closest_approach_r, save_last, ca_saveall, Xlast, Vlast, Tlast, Ica, Xca, Vca, Tca):
-    # update closest approach variables
-    x_prev = Xlast[:, (i - 1) % save_last]
+def peri_apo_centers_computations(s, x, v, dt):
+
+    # only consider i > 2
+    if s.i < 2: return
+
+    # compute 2 previous states
+    x_cur = s.Xlast[:, s.i % s.save_last]
+    r12_cur = norm(x_cur[0:3] - x_cur[3:6])
+    x_prev = s.Xlast[:, (s.i - 1) % s.save_last]
     r12_prev = norm(x_prev[0:3] - x_prev[3:6])
+    x_prev2 = s.Xlast[:, (s.i - 2) % s.save_last]
+    r12_prev2 = norm(x_prev2[0:3] - x_prev2[3:6])
 
-    if i < 2:
-        return caidx, closest_approach_r
+    # apocenter
+    if r12_prev > r12_cur and r12_prev > r12_prev2:
+        update_dE_max(s, x, v, dt)
 
-    if ca_saveall or r12_prev < closest_approach_r:
-        # only update if this is really a minimum
-        x_prev2 = Xlast[:, (i - 2) % save_last]
-        r12_prev2 = norm(x_prev2[0:3] - x_prev2[3:6])
-
-        x_cur = Xlast[:, i % save_last]
-        r12_cur = norm(x_cur[0:3] - x_cur[3:6])
-
-        if r12_cur > r12_prev and r12_prev2 > r12_prev:
-            closest_approach_r = r12_prev
-            Ica[caidx] = i - 1
-            Xca[:, caidx] = Xlast[:, (i - 1) % save_last]
-            Vca[:, caidx] = Vlast[:, (i - 1) % save_last]
-            Tca[caidx] = Tlast[(i - 1) % save_last]
-            caidx += 1
-    return caidx, closest_approach_r
+    # pericenter
+    if s.ca_saveall or r12_prev < s.closest_approach_r:
+        if r12_prev < r12_cur and r12_prev < r12_prev2:
+            s.closest_approach_r = r12_prev
+            s.Ica[s.caidx] = s.i - 1
+            s.Xca[:, s.caidx] = s.Xlast[:, (s.i - 1) % s.save_last]
+            s.Vca[:, s.caidx] = s.Vlast[:, (s.i - 1) % s.save_last]
+            s.Tca[s.caidx] = s.Tlast[(s.i - 1) % s.save_last]
+            s.caidx += 1
 
 
 @jit(nopython=True)
-def check_stopping_conditions(x, v, t, nP, steps_per_P, i, N, P_in, G, R, m1, m2, m3, rmax, max_periods, tmax):
+def check_stopping_conditions(s, x, v, t, N, R):
     fin_reason = REASON_NONE
 
     if np.isnan(t):
@@ -127,38 +129,27 @@ def check_stopping_conditions(x, v, t, nP, steps_per_P, i, N, P_in, G, R, m1, m2
         fin_reason = TNAN
 
     # break if max_periods reached
-    if max_periods > 0 and nP >= max_periods:
-        print('[BREAK] max periods reached:', nP)
+    if s.max_periods > 0 and s.nP >= s.max_periods:
+        print('[BREAK] max periods reached:', s.nP)
         fin_reason = MAX_PERIODS
 
-    # break if max time reached
-    if t > tmax:
-        print('[BREAK] tmax reached:', t)
-        fin_reason = TMAX
-
-    # # break if rmin reached
-    # if r12 < rmin:
-    #     print('[BREAK] rmin reached:', r12)
-    #     fin_reason = RMIN
-    #     break
-
-    # update nP and check stuff once in a while
-    if t / P_in - nP > 1:
-        nP += 1
-        if nP == 1:
-            steps_per_P = i
-            print("steps per P:", i)
-            if steps_per_P > 3e4:  # TODO: verify this is a good condition
+    # update nP, update steps_per_P, break if system is broken
+    if t / s.P_in - s.nP > 1:
+        s.nP += 1
+        if s.nP == 1:
+            s.steps_per_P = s.i
+            print("steps per P:", s.i)
+            if s.steps_per_P > 3e4:  # TODO: verify this is a good condition
                 print('[BREAK] assuming bad system')
                 fin_reason = BAD
 
-        if nP % 1000 == 0:
-            print('nP:', nP, 'i', i, '/', N, '(', (i / N), ')')
-            if is_system_broken(G, R, x, v, m1, m2, m3, rmax):
+        if s.nP % 1000 == 0:
+            print('nP:', s.nP, 'i', s.i, '/', N, '(', (s.i / N), ')')
+            if is_system_broken(s.G, R, x, v, s.m1, s.m2, s.m3, s.rmax):
                 print('[BREAK] system broken')
                 fin_reason = SYSTEM_BROKEN
 
-    return nP, steps_per_P, fin_reason
+    return fin_reason
 
 
 @jit(nopython=True)
@@ -224,25 +215,16 @@ def advance_state(s, N):
 
         # save params
         save_state_params(s, x, v, dt, t)
-        if (s.nP + 1) % 1000 == 0: update_dE_max(s, x, v, dt)
 
-        # closest approach handling
-        s.caidx, s.closest_approach_r = update_closest_approach(s.i, s.caidx, s.closest_approach_r, s.save_last,
-                                                                s.ca_saveall,
-                                                                s.Xlast, s.Vlast, s.Tlast, s.Ica, s.Xca, s.Vca, s.Tca)
+        # do stuff in pericenter or apocenter
+        peri_apo_centers_computations(s, x, v, dt)
 
         # get distances between masses
         R = get_R(x)
 
-        # Stopping Conditions:
-        s.nP, s.steps_per_P, s.fin_reason = check_stopping_conditions(x, v, t,
-                                                                      s.nP, s.steps_per_P,
-                                                                      s.i, N,
-                                                                      s.P_in,
-                                                                      s.G, R, s.m1, s.m2, s.m3,
-                                                                      s.rmax, s.max_periods, s.tmax)
-        if s.fin_reason != REASON_NONE:
-            break
+        # check stopping conditions
+        s.fin_reason = check_stopping_conditions(s, x, v, t, N, R)
+        if s.fin_reason != REASON_NONE: break
 
         # Kick (update v)
         v = kick(v, s, R)
