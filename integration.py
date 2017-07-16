@@ -92,35 +92,6 @@ def is_system_broken(G, R, x, v, m1, m2, m3, rmax):
 
 
 @jit(nopython=True)
-def peri_apo_centers_computations(s, x, v, dt):
-
-    # only consider i > 2
-    if s.i < 2: return
-
-    # compute 2 previous states
-    x_cur = s.Xlast[:, s.i % s.save_last]
-    r12_cur = norm(x_cur[0:3] - x_cur[3:6])
-    x_prev = s.Xlast[:, (s.i - 1) % s.save_last]
-    r12_prev = norm(x_prev[0:3] - x_prev[3:6])
-    x_prev2 = s.Xlast[:, (s.i - 2) % s.save_last]
-    r12_prev2 = norm(x_prev2[0:3] - x_prev2[3:6])
-
-    # apocenter
-    if r12_prev > r12_cur and r12_prev > r12_prev2:
-        update_dE_max(s, x, v, dt)
-
-    # pericenter
-    if s.ca_saveall or r12_prev < s.closest_approach_r:
-        if r12_prev < r12_cur and r12_prev < r12_prev2:
-            s.closest_approach_r = r12_prev
-            s.Ica[s.caidx] = s.i - 1
-            s.Xca[:, s.caidx] = s.Xlast[:, (s.i - 1) % s.save_last]
-            s.Vca[:, s.caidx] = s.Vlast[:, (s.i - 1) % s.save_last]
-            s.Tca[s.caidx] = s.Tlast[(s.i - 1) % s.save_last]
-            s.caidx += 1
-
-
-@jit(nopython=True)
 def check_stopping_conditions(s, x, v, t, N, R):
     fin_reason = REASON_NONE
 
@@ -154,28 +125,65 @@ def check_stopping_conditions(s, x, v, t, N, R):
 
 @jit(nopython=True)
 def update_dE_max(s, x, v, dt):
+    # compute dE
     R = get_R(x - v * dt/2)
     U = get_U(s.G, s.m1, s.m2, s.m3, R)
     K = get_K(v, s.m1, s.m2, s.m3)
     E = U + K
     dE = np.abs(E/s.E0 - 1)
+    # update if bigger than previous
     if dE > s.dE_max:
         s.dE_max = dE
         s.dE_max_i = s.i
 
 
 @jit(nopython=True)
+def save_all_params(s, x, v, dt, t):
+    s.X[:, s.idx] = x - v * dt / 2
+    s.V[:, s.idx] = v
+    s.DT[s.idx] = dt
+    s.T[s.idx] = t
+    s.idx += 1
+
+
+@jit(nopython=True)
 def save_state_params(s, x, v, dt, t):
-    if s.i % s.save_every == 0:
-        s.X[:, s.idx] = x - v * dt / 2
-        s.V[:, s.idx] = v
-        s.DT[s.idx] = dt
-        s.T[s.idx] = t
-        s.idx += 1
-    # save last save_last
+
+    # maintain "last" arrays
     s.Xlast[:, s.i % s.save_last] = x - v * dt / 2
     s.Vlast[:, s.i % s.save_last] = v
     s.Tlast[s.i % s.save_last] = t
+
+    # maintain "all" arrays
+    if not s.save_every_P and s.i % s.save_every == 0:
+        save_all_params(s, x, v, dt, t)
+
+    # only consider i > 2
+    if s.i < 2: return
+
+    # compute 2 previous states
+    x_cur = s.Xlast[:, s.i % s.save_last]
+    r12_cur = norm(x_cur[0:3] - x_cur[3:6])
+    x_prev = s.Xlast[:, (s.i - 1) % s.save_last]
+    r12_prev = norm(x_prev[0:3] - x_prev[3:6])
+    x_prev2 = s.Xlast[:, (s.i - 2) % s.save_last]
+    r12_prev2 = norm(x_prev2[0:3] - x_prev2[3:6])
+
+    # apocenter
+    if r12_prev > r12_cur and r12_prev > r12_prev2:
+        update_dE_max(s, x, v, dt)
+        if s.save_every_P and s.nP % s.save_every_P == 0:
+            save_all_params(s, x, v, dt, t)
+
+    # pericenter
+    if s.ca_saveall or r12_prev < s.closest_approach_r:
+        if r12_prev < r12_cur and r12_prev < r12_prev2:
+            s.closest_approach_r = r12_prev
+            s.Ica[s.caidx] = s.i - 1
+            s.Xca[:, s.caidx] = s.Xlast[:, (s.i - 1) % s.save_last]
+            s.Vca[:, s.caidx] = s.Vlast[:, (s.i - 1) % s.save_last]
+            s.Tca[s.caidx] = s.Tlast[(s.i - 1) % s.save_last]
+            s.caidx += 1
 
 
 @jit(nopython=True)
@@ -217,9 +225,6 @@ def advance_state(s, N):
         # save params
         save_state_params(s, x, v, dt, t)
 
-        # do stuff in pericenter or apocenter
-        peri_apo_centers_computations(s, x, v, dt)
-
         # get distances between masses
         R = get_R(x)
 
@@ -246,4 +251,5 @@ def advance_state(s, N):
     print('#iterations:', s.i)
     print('#periods:', s.nP)
     print('caidx:', s.caidx)
+    print('idx:', s.idx)
     print('closest approach:', s.closest_approach_r)

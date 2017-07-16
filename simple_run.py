@@ -23,10 +23,10 @@ params_phys = {
 
 params_sim = {
     'dt00': np.nan,  # np.nan for don't care
-    'samples_per_Pcirc': np.int64(2000),
+    'samples_per_Pcirc': np.int64(1000),
     'max_periods': np.int64(3000),  # -1 for don't care
     'save_every': np.int64(10),
-    'save_every_P': np.int64(10),
+    'save_every_P': np.int64(1),
     'rmin': r_dissip,
     'tmax': 5e9 * year / t_unit,
     'rmax': 50 * params_phys['a'],

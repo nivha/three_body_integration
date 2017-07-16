@@ -41,7 +41,7 @@ def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_d
     print('run simulation')
 
     # create state instance
-    vsize = np.int64(N / params_sim['save_every'])
+    vsize = max(np.int64(N / params_sim['save_every']), np.int64(5000))
     sim_state = SimState(vsize, params_sim['save_last'])
 
     # create parameters dict
