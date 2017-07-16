@@ -7,6 +7,7 @@ Created on Fri Jun 30 10:13:41 2017
 
 import numpy as np
 import numba as nb
+from numpy.linalg import norm
 
 from sim.utils import REASON_NONE, OrbitalParameters, get_dt0
 
@@ -56,6 +57,7 @@ spec = [
     ('dt00', nb.double),
     ('max_periods', nb.int64),
     ('save_every', nb.int64),
+    ('save_every_P', nb.int64),
     ('samples_per_Pcirc', nb.int64),
     ('save_last', nb.int64),
     ('rmin', nb.double),
@@ -97,7 +99,7 @@ class SimState(object):
 
 def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
                          f_out, inclination, Omega, omega, rper_over_a, eper,
-                         dt00, max_periods, save_every, samples_per_Pcirc, save_last, rmin, tmax, rmax, ca_saveall):
+                         dt00, max_periods, save_every, save_every_P, samples_per_Pcirc, save_last, rmin, tmax, rmax, ca_saveall):
     # dump args to properties
     s.G = G
     s.m1 = m1
@@ -115,6 +117,7 @@ def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
     s.dt00 = dt00
     s.max_periods = max_periods
     s.save_every = save_every
+    s.save_every_P = save_every_P
     s.samples_per_Pcirc = samples_per_Pcirc
     s.save_last = save_last
     s.rmin = rmin
@@ -136,9 +139,11 @@ def initialize_state(s):
     s.jz_eff = op.jz_eff
     s.P_in = op.P_in
     s.P_out = op.P_out
+
     # set dt0
-    s.dt0, s.U_init = get_dt0(s.G, s.m1, s.m2, s.samples_per_Pcirc, s.dt00,
-                              op.U0, op.a_in0, op.x0_in)
+    s.dt0 = get_dt0(s.G, s.m1, s.m2, op.a_in0, s.samples_per_Pcirc, s.dt00)
+    s.U_init = - s.G * s.m1 * s.m2 / norm(op.a_in0)
+
     # set initial simulation params
     s.Xlast[:, 0] = op.x0
     s.Vlast[:, 0] = op.v0

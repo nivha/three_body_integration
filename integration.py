@@ -210,6 +210,7 @@ def advance_state(s, N):
     K = get_K(v, s.m1, s.m2, s.m3)
     dt = s.dt0 * fU(s.E0 - K, s.U_init)
     x += v * dt / 2
+    print('dt at t=0:', dt)
 
     while s.i < N:
 

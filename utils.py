@@ -110,18 +110,16 @@ def f_from_M(M, e, tol=1e-6):
     return f
 
 
-def get_dt0(G, m1, m2, samples_per_Pcirc, dt00, U0, a_in0, x0_in):
+def get_dt0(G, m1, m2, a_in0, samples_per_Pcirc, dt00):
     Min = m1 + m2
-    Pcirc = 2 * np.pi * np.sqrt(a_in0**3 / G / Min)
-    dt0 = Pcirc / samples_per_Pcirc
-    U_init = U0
+    Pcirc = 2 * np.pi * np.sqrt(a_in0 ** 3 / G / Min)
     if not np.isnan(dt00):
         dt0 = dt00 * np.sqrt(a_in0**3 / G / Min)
-        # U_init = - G * m1 * m2 / norm(x0_in)
-        U_init = - G * m1 * m2 / norm(a_in0)
+    else:
+        dt0 = Pcirc / samples_per_Pcirc
 
     print("dt0:", dt0)
-    return dt0, U_init
+    return dt0
 
 
 class OrbitalParameters:
@@ -134,7 +132,7 @@ class OrbitalParameters:
 
     def set_orbital_parameters(s, G, m1, m2, m3, e, a, M0_in, rper_over_a, eper, f_out, inclination, Omega, omega):
         # basic params
-        s.aper = rper_over_a #/ (1 - eper)
+        s.aper = rper_over_a / (1 - eper)
         s.Min = m1 + m2
         s.Mout = m1 + m2 + m3
         s.muin = m1 * m2 / s.Min
