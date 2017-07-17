@@ -29,7 +29,7 @@ def process_state(N, sim_state, post_process=False):
     if post_process:
         print('post processing')
         # scaling_params = {'Msun': Msun, 'G': G, 'au': au, 't_unit': t_unit}
-        scaling_params = {'Msun': 1, 'G': 1, 'au': 1, 't_unit': 1}  # don't scale anything
+        scaling_params = {'Msun': 1.0, 'G': 1.0, 'au': 1.0, 't_unit': 1.0}  # don't scale anything
         op = _post_process(sim_state, scaling_params)
         return op.__dict__
 
@@ -52,6 +52,11 @@ def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_d
     # initialize state from configuration parameters
     inject_config_params(sim_state, **d)
     initialize_state(sim_state)
+
+    # print some stats
+    print("dt0:", sim_state.dt0)
+    print("jz_eff0:", sim_state.jz_eff0)
+    print("jz_eff_crossed_zero:", sim_state.jz_eff_crossed_zero)
 
     # process simulation (advance and post_process)
     result_d = process_state(N, sim_state, post_process)

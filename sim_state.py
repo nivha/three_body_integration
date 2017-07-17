@@ -37,6 +37,7 @@ spec = [
     ('fin_reason', nb.int64),
     ('dE_max', nb.double),
     ('dE_max_i', nb.double),
+    ('jz_eff_crossed_zero', nb.int64),
 
     # configuration variables
     # physical
@@ -68,7 +69,8 @@ spec = [
     ('U_init', nb.double),
     ('P_in', nb.double),
     ('P_out', nb.double),
-    ('jz_eff', nb.double),
+    ('jz_eff0', nb.double),
+    ('jz_eff_P', nb.double),
     ('dt0', nb.double),
 ]
 
@@ -90,7 +92,8 @@ class SimState(object):
         self.Ica = np.empty(100000, dtype=np.int64)
 
         # initialize integration indexes to zero
-        self.i = self.nP = self.idx = self.caidx = self.steps_per_P = self.dE_max = self.dE_max_i = 0
+        self.i = self.idx = self.caidx = self.dE_max_i = 0
+        self.nP = self.steps_per_P = self.dE_max = self.jz_eff_crossed_zero = 0
         self.closest_approach_r = np.infty
         self.fin_reason = REASON_NONE
 
@@ -132,7 +135,8 @@ def initialize_state(s):
                            inclination=s.inclination, Omega=s.Omega, omega=s.omega)
     # set orbital params
     s.E0 = op.E0
-    s.jz_eff = op.jz_eff
+    s.jz_eff0 = op.jz_eff
+    s.jz_eff_P = op.jz_eff
     s.P_in = op.P_in
     s.P_out = op.P_out
 

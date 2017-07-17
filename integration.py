@@ -8,6 +8,7 @@ Created on Fri Jun 30 10:13:41 2017
 import numpy as np
 from numpy.linalg import norm
 from numba import jit
+from sim.utils import cross_jit
 from sim.utils import REASON_NONE, TNAN, MAX_PERIODS, SYSTEM_BROKEN, BAD, FINISHED_ITERATIONS
 
 
@@ -67,8 +68,35 @@ def get_E(G, mi, xi, vi, mj, xj, vj, xp, vp, mp):
 
 
 @jit(nopython=True)
-def is_system_broken(G, R, x, v, m1, m2, m3, rmax):
+def get_jz_eff(G, m1, m2, m3, a, x, v):
+    M = m1 + m2
+    mu_in = m1 * m2 / M
+    mu_out = m3 * M / (M + m3)
 
+    # compute Jv_in
+    r_in = x[3:6] - x[0:3]
+    v_in = v[3:6] - v[0:3]
+    Jv_in = mu_in * cross_jit(r_in, v_in)
+
+    # compute Jv_out
+    rcms_in = (m1*x[3:6] + m2*x[0:3]) / M
+    vcms_in = (m1*v[3:6] + m2*v[0:3]) / M
+    r_out = x[6:9] - rcms_in
+    v_out = v[6:9] - vcms_in
+    Jv_out = mu_out * cross_jit(r_out, v_out)
+
+    Jout = norm(Jv_out)
+    Jcirc = mu_in * np.sqrt(G*M*a)
+
+    jz_eff = Jv_in @ Jv_out / Jout / Jcirc + norm(Jv_in)**2 / Jout / Jcirc / 2
+
+    return jz_eff
+
+
+@jit(nopython=True)
+def is_system_broken(G, m1, m2, m3, x, v, rmax):
+
+    R = get_R(x)
     r12 = norm(R[0:3])
     r13 = norm(R[3:6])
     r23 = norm(R[6:9])
@@ -92,7 +120,7 @@ def is_system_broken(G, R, x, v, m1, m2, m3, rmax):
 
 
 @jit(nopython=True)
-def check_stopping_conditions(s, x, v, t, N, R):
+def check_stopping_conditions(s, x, v, dt, t, N):
     fin_reason = REASON_NONE
 
     if np.isnan(t):
@@ -116,7 +144,8 @@ def check_stopping_conditions(s, x, v, t, N, R):
 
         if s.nP % 1000 == 0:
             print('nP:', s.nP, 'i', s.i, '/', N, '(', (s.i / N), ')')
-            if is_system_broken(s.G, R, x, v, s.m1, s.m2, s.m3, s.rmax):
+            xfixed = x - v * dt / 2  # fix x to match v
+            if is_system_broken(s.G, s.m1, s.m2, s.m3, xfixed, v, s.rmax):
                 print('[BREAK] system broken')
                 fin_reason = SYSTEM_BROKEN
 
@@ -124,9 +153,9 @@ def check_stopping_conditions(s, x, v, t, N, R):
 
 
 @jit(nopython=True)
-def update_dE_max(s, x, v, dt):
+def update_dE_max(s, x, v):
     # compute dE
-    R = get_R(x - v * dt/2)
+    R = get_R(x)
     U = get_U(s.G, s.m1, s.m2, s.m3, R)
     K = get_K(v, s.m1, s.m2, s.m3)
     E = U + K
@@ -139,7 +168,7 @@ def update_dE_max(s, x, v, dt):
 
 @jit(nopython=True)
 def save_all_params(s, x, v, dt, t):
-    s.X[:, s.idx] = x - v * dt / 2
+    s.X[:, s.idx] = x
     s.V[:, s.idx] = v
     s.DT[s.idx] = dt
     s.T[s.idx] = t
@@ -148,15 +177,17 @@ def save_all_params(s, x, v, dt, t):
 
 @jit(nopython=True)
 def save_state_params(s, x, v, dt, t):
+    # fix x to match v
+    xfixed = x - v * dt / 2
 
     # maintain "last" arrays
-    s.Xlast[:, s.i % s.save_last] = x - v * dt / 2
+    s.Xlast[:, s.i % s.save_last] = xfixed
     s.Vlast[:, s.i % s.save_last] = v
     s.Tlast[s.i % s.save_last] = t
 
     # maintain "all" arrays
     if not s.save_every_P and s.i % s.save_every == 0:
-        save_all_params(s, x, v, dt, t)
+        save_all_params(s, xfixed, v, dt, t)
 
     # only consider i > 2
     if s.i < 2: return
@@ -171,9 +202,16 @@ def save_state_params(s, x, v, dt, t):
 
     # apocenter
     if r12_prev > r12_cur and r12_prev > r12_prev2:
-        update_dE_max(s, x, v, dt)
+        # update dE_max
+        update_dE_max(s, xfixed, v)
+        # save params every period
         if s.save_every_P and s.nP % s.save_every_P == 0:
-            save_all_params(s, x, v, dt, t)
+            save_all_params(s, xfixed, v, dt, t)
+        # maintain if jz_eff crossed zero
+        jz_eff_cur = get_jz_eff(s.G, s.m1, s.m2, s.m3, s.a, xfixed, v)
+        if jz_eff_cur * s.jz_eff_P < 0:
+            s.jz_eff_crossed_zero = 1
+        s.jz_eff_P = jz_eff_cur
 
     # pericenter
     if s.ca_saveall or r12_prev < s.closest_approach_r:
@@ -222,17 +260,13 @@ def advance_state(s, N):
 
     while s.i < N:
 
-        # save params
+        # save params and check stopping conditions
         save_state_params(s, x, v, dt, t)
-
-        # get distances between masses
-        R = get_R(x)
-
-        # check stopping conditions
-        s.fin_reason = check_stopping_conditions(s, x, v, t, N, R)
+        s.fin_reason = check_stopping_conditions(s, x, v, dt, t, N)
         if s.fin_reason != REASON_NONE: break
 
         # Kick (update v)
+        R = get_R(x)
         v = kick(v, s, R)
 
         # Drift (update x and get dt)

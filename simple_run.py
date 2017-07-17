@@ -6,11 +6,11 @@ from sim.utils import r_dissip, year, t_unit
 from sim.run_simulation import run_simulation
 
 params_phys = {
-    'G': 1,
+    'G': 1.0,
     'm1': 0.6,
     'm2': 0.6,
     'm3': 0.7,
-    'a': 1,
+    'a': np.double(1),
     'e': 0.1,
     'M0_in': np.deg2rad(0),
     'f_out': np.deg2rad(0),
@@ -24,7 +24,7 @@ params_phys = {
 params_sim = {
     'dt00': np.nan,  # np.nan for don't care
     'samples_per_Pcirc': np.int64(1000),
-    'max_periods': np.int64(3000),  # -1 for don't care
+    'max_periods': np.int64(1000),  # -1 for don't care
     'save_every': np.int64(10),
     'save_every_P': 0, #np.int64(1),
     'rmax': 50 * params_phys['a'],

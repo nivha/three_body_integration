@@ -32,6 +32,24 @@ cnorm = lambda x: np.sqrt(abs2_each(x))  # norm of each column
 normc = lambda x: x / cnorm(x)  # normalize each column by its norm
 
 
+@nb.jit(nopython=True)
+def cross_jit(vec1, vec2):
+    """ Calculate the cross product of two 3d vectors. """
+    result = np.zeros(3)
+    return cross_jit_(vec1, vec2, result)
+
+
+@nb.jit(nopython=True)
+def cross_jit_(vec1, vec2, result):
+    """ Calculate the cross product of two 3d vectors. """
+    a1, a2, a3 = np.double(vec1[0]), np.double(vec1[1]), np.double(vec1[2])
+    b1, b2, b3 = np.double(vec2[0]), np.double(vec2[1]), np.double(vec2[2])
+    result[0] = a2 * b3 - a3 * b2
+    result[1] = a3 * b1 - a1 * b3
+    result[2] = a1 * b2 - a2 * b1
+    return result
+
+
 def get_je(e, i, Omega, omega):
 
     j = sqrt(1 - e**2)
@@ -117,9 +135,21 @@ def get_dt0(G, m1, m2, a_in0, samples_per_Pcirc, dt00):
         dt0 = dt00 * np.sqrt(a_in0**3 / G / Min)
     else:
         dt0 = Pcirc / samples_per_Pcirc
-
-    print("dt0:", dt0)
     return dt0
+
+
+def get_jz_eff(G, m1, m2, m3, a, e, inclination, rper_over_a, eper):
+    Min = m1 + m2
+    Mout = m1 + m2 + m3
+    mu_in = (m1 * m2) / Min
+    mu_out = (Min * m3) / Mout
+    a_out = a * rper_over_a / (1 - eper)
+    Jcirc = mu_in * np.sqrt(G * Min * a)
+    Jout = mu_out * np.sqrt(G * Mout * a_out * (1 - eper**2))
+    j = np.sqrt(1 - e**2)
+    jz_eff = j * np.cos(inclination) + j**2 * Jcirc / 2 / Jout
+
+    return jz_eff
 
 
 class OrbitalParameters:
@@ -178,11 +208,8 @@ class OrbitalParameters:
         s.U0, s.K0 = get_energy(s.x01, s.v01, m1, s.x02, s.v02, m2, s.x03, s.v03, m3, G)
         s.E0 = s.U0 + s.K0
 
-        # jz_eff
-        Jcirc = s.muin * sqrt(G * s.Min * a)
-        Jout = s.muout * norm(s.Jv_out)
-        j = norm(s.jv0)
-        s.jz_eff = j * np.cos(inclination) + j**2 * Jcirc / 2 / Jout
+        # jz_eff (not per unit mass)
+        s.jz_eff = get_jz_eff(G, m1, m2, m3, a, e, inclination, rper_over_a, eper)
 
         # Kozai time
         s.tau = 2 * (sqrt(G * s.Min) / (G * m3)) * (s.aper ** 3 / a**(3 / 2)) * (1 - eper**2)**(3 / 2)
