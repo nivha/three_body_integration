@@ -26,6 +26,9 @@ r_dissip = r_dissip_cm / au  # in scaled units
 # Simulation finish reasons
 REASON_NONE, FINISHED_ITERATIONS, BAD, TNAN, MAX_PERIODS, SYSTEM_BROKEN = range(6)
 
+# Simulation regions
+NEAR_PERI, NEAR_APO = range(2)
+
 # Algebraic operations
 abs2_each = lambda x: np.sum(np.square(x), axis=0)  # squared norm for each column
 cnorm = lambda x: np.sqrt(abs2_each(x))  # norm of each column

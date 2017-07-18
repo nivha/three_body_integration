@@ -10,6 +10,7 @@ from numpy.linalg import norm
 from numba import jit
 from sim.utils import cross_jit
 from sim.utils import REASON_NONE, TNAN, MAX_PERIODS, SYSTEM_BROKEN, BAD, FINISHED_ITERATIONS
+from sim.utils import NEAR_APO, NEAR_PERI
 
 
 @jit(nopython=True)
@@ -94,6 +95,30 @@ def get_jz_eff(G, m1, m2, m3, a, x, v):
 
 
 @jit(nopython=True)
+def get_r0_rm_rp(s, i0, im):
+    """ compute 3 points r0, r_minus and r_plus to determine apsis
+        compute these at i0 and im before current i
+    """
+    x0 = s.Xlast[:, (s.i - i0) % s.save_last]
+    r0 = norm(x0[0:3] - x0[3:6])
+    xp = s.Xlast[:, s.i % s.save_last]
+    rp = norm(xp[0:3] - xp[3:6])
+    xm = s.Xlast[:, (s.i - im) % s.save_last]
+    rm = norm(xm[0:3] - xm[3:6])
+    return r0, rm, rp
+
+
+@jit(nopython=True)
+def is_peri(r0, rm, rp):
+    return r0 < rp and r0 < rm
+
+
+@jit(nopython=True)
+def is_apo(r0, rm, rp):
+    return r0 > rp and r0 > rm
+
+
+@jit(nopython=True)
 def is_system_broken(G, m1, m2, m3, x, v, rmax):
 
     R = get_R(x)
@@ -120,7 +145,7 @@ def is_system_broken(G, m1, m2, m3, x, v, rmax):
 
 
 @jit(nopython=True)
-def check_stopping_conditions(s, x, v, dt, t, N):
+def check_stopping_conditions(s, x, v, t, N):
     fin_reason = REASON_NONE
 
     if np.isnan(t):
@@ -138,14 +163,10 @@ def check_stopping_conditions(s, x, v, dt, t, N):
         if s.nP == 1:
             s.steps_per_P = s.i
             print("steps per P:", s.i)
-            if s.steps_per_P > 3e4:  # TODO: verify this is a good condition
-                print('[BREAK] assuming bad system')
-                fin_reason = BAD
 
         if s.nP % 1000 == 0:
             print('nP:', s.nP, 'i', s.i, '/', N, '(', (s.i / N), ')')
-            xfixed = x - v * dt / 2  # fix x to match v
-            if is_system_broken(s.G, s.m1, s.m2, s.m3, xfixed, v, s.rmax):
+            if is_system_broken(s.G, s.m1, s.m2, s.m3, x, v, s.rmax):
                 print('[BREAK] system broken')
                 fin_reason = SYSTEM_BROKEN
 
@@ -164,64 +185,72 @@ def update_dE_max(s, x, v):
     if dE > s.dE_max:
         s.dE_max = dE
         s.dE_max_i = s.i
+        s.dE_max_x = x
+        s.dE_max_v = v
 
 
 @jit(nopython=True)
-def save_all_params(s, x, v, dt, t):
-    s.X[:, s.idx] = x
-    s.V[:, s.idx] = v
-    s.DT[s.idx] = dt
-    s.T[s.idx] = t
+def save_all_params(s, i):
+    s.X[:, s.idx] = s.Xlast[:, i % s.save_last]
+    s.V[:, s.idx] = s.Vlast[:, i % s.save_last]
+    s.DT[s.idx] = s.DTlast[i % s.save_last]
+    s.T[s.idx] = s.Tlast[i % s.save_last]
     s.idx += 1
 
 
 @jit(nopython=True)
-def save_state_params(s, x, v, dt, t):
-    # fix x to match v
-    xfixed = x - v * dt / 2
+def treat_apocenter(s, i_apo, t):
+    x_apo = s.Xlast[:, (s.i - i_apo) % s.save_last]
+    v_apo = s.Vlast[:, (s.i - i_apo) % s.save_last]
 
+    # update dE_max
+    update_dE_max(s, x_apo, v_apo)
+
+    # save params every save_every_P period
+    if s.save_every_P > 0 and t / s.P_in - s.save_every_P * s.save_every_P_i >= 0:
+        save_all_params(s, s.i - i_apo)
+        s.save_every_P_i += 1
+
+    # maintain if jz_eff crossed zero
+    s.jz_eff = get_jz_eff(s.G, s.m1, s.m2, s.m3, s.a, x_apo, v_apo)
+    s.jz_eff_x = x_apo; s.jz_eff_v = v_apo
+    if s.jz_eff * s.jz_eff0 < 0: s.jz_eff_crossed_zero = 1
+
+
+@jit(nopython=True)
+def treat_pericenter(s, r0, i_peri):
+    if s.ca_saveall or r0 < s.closest_approach_r:
+        s.closest_approach_r = r0
+        s.Ica[s.caidx] = s.i - i_peri
+        s.Xca[:, s.caidx] = s.Xlast[:, (s.i - i_peri) % s.save_last]
+        s.Vca[:, s.caidx] = s.Vlast[:, (s.i - i_peri) % s.save_last]
+        s.Tca[s.caidx] = s.Tlast[(s.i - i_peri) % s.save_last]
+        s.caidx += 1
+
+
+@jit(nopython=True)
+def save_state_params(s, x, v, dt, t):
     # maintain "last" arrays
-    s.Xlast[:, s.i % s.save_last] = xfixed
+    s.Xlast[:, s.i % s.save_last] = x
     s.Vlast[:, s.i % s.save_last] = v
+    s.DTlast[s.i % s.save_last] = dt
     s.Tlast[s.i % s.save_last] = t
 
     # maintain "all" arrays
     if not s.save_every_P and s.i % s.save_every == 0:
-        save_all_params(s, xfixed, v, dt, t)
+        save_all_params(s, s.i)
 
-    # only consider i > 2
-    if s.i < 2: return
-
-    # compute 2 previous states
-    x_cur = s.Xlast[:, s.i % s.save_last]
-    r12_cur = norm(x_cur[0:3] - x_cur[3:6])
-    x_prev = s.Xlast[:, (s.i - 1) % s.save_last]
-    r12_prev = norm(x_prev[0:3] - x_prev[3:6])
-    x_prev2 = s.Xlast[:, (s.i - 2) % s.save_last]
-    r12_prev2 = norm(x_prev2[0:3] - x_prev2[3:6])
-
-    # apocenter
-    if r12_prev > r12_cur and r12_prev > r12_prev2:
-        # update dE_max
-        update_dE_max(s, xfixed, v)
-        # save params every period
-        if s.save_every_P and s.nP % s.save_every_P == 0:
-            save_all_params(s, xfixed, v, dt, t)
-        # maintain if jz_eff crossed zero
-        jz_eff_cur = get_jz_eff(s.G, s.m1, s.m2, s.m3, s.a, xfixed, v)
-        if jz_eff_cur * s.jz_eff_P < 0:
-            s.jz_eff_crossed_zero = 1
-        s.jz_eff_P = jz_eff_cur
-
-    # pericenter
-    if s.ca_saveall or r12_prev < s.closest_approach_r:
-        if r12_prev < r12_cur and r12_prev < r12_prev2:
-            s.closest_approach_r = r12_prev
-            s.Ica[s.caidx] = s.i - 1
-            s.Xca[:, s.caidx] = s.Xlast[:, (s.i - 1) % s.save_last]
-            s.Vca[:, s.caidx] = s.Vlast[:, (s.i - 1) % s.save_last]
-            s.Tca[s.caidx] = s.Tlast[(s.i - 1) % s.save_last]
-            s.caidx += 1
+    # handle apsis stuff
+    i0 = 5
+    im = 10
+    if s.i < im: return
+    r0, rm, rp = get_r0_rm_rp(s, i0, im)
+    if r0 > s.a and s.region == NEAR_APO and is_apo(r0, rm, rp):
+        treat_apocenter(s, i_apo=i0, t=t)
+        s.region = NEAR_PERI
+    elif r0 < s.a and s.region == NEAR_PERI and is_peri(r0, rm, rp):
+        treat_pericenter(s, r0, i_peri=i0)
+        s.region = NEAR_APO
 
 
 @jit(nopython=True)
@@ -258,11 +287,15 @@ def advance_state(s, N):
     x += v * dt / 2
     print('dt at t=0:', dt)
 
+    # save first state
+    if s.i == 0: save_all_params(s, s.i)
+
     while s.i < N:
 
         # save params and check stopping conditions
-        save_state_params(s, x, v, dt, t)
-        s.fin_reason = check_stopping_conditions(s, x, v, dt, t, N)
+        xfixed = x - v * dt / 2
+        save_state_params(s, xfixed, v, dt, t)
+        s.fin_reason = check_stopping_conditions(s, xfixed, v, t, N)
         if s.fin_reason != REASON_NONE: break
 
         # Kick (update v)

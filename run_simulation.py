@@ -41,7 +41,8 @@ def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_d
     print('run simulation')
 
     # create state instance
-    vsize = max(np.int64(N / params_sim['save_every']), np.int64(5000))
+    vsize = max(np.int64(N / params_sim['save_every']), params_sim['max_periods'])
+    print('vsize:', vsize)
     sim_state = SimState(vsize, params_sim['save_last'])
 
     # create parameters dict
@@ -114,43 +115,20 @@ def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_d
 if __name__ == "__main__":
     RESULT_PATH_PC_LOCAL = os.path.join('c:', os.sep, 'tmp', 'sim1.mat')
 
-    # job_number = 965
-    # config_file = os.path.join('Z:', os.sep, 'ConfigFiles', 'Jobs', '{}.config'.format(job_number))
-    # with open(config_file, 'rb') as f:
-    #     d = np.load(f).item()
-    # params_phys, params_sim = d['params_phys'], d['params_sim']
-    # params_sim['max_periods'] = np.int64(1000)
-    # params_sim['N'] = np.int64(1e6)
-    # params_sim['save_every'] = np.int64(1)
-    # print('params loaded from', config_file)
+    proj = 'm105m205m305'
+    rovera = 1.5
+    job_number = 255
+    config_file = os.path.join('Z:', os.sep, 'ConfigFiles', 'Jobs', proj, str(rovera), '{}.config'.format(job_number))
+    with open(config_file, 'rb') as f:
+        d = np.load(f).item()
+    print(d)
+    params_phys, params_sim = d['params_phys'], d['params_sim']
+    params_sim['max_periods'] = np.int64(6000)
+    params_sim['save_every'] = np.int64(10)
+    params_sim['save_every_P'] = np.int64(0)
 
-    params_phys = {
-        'G': 1,
-        'm1': 0.6,
-        'm2': 0.6,
-        'm3': 0.7,
-        'a': 1,
-        'e': 0.1,
-        'M0_in': np.deg2rad(0),
-        'f_out': np.deg2rad(0),
-        'inclination': np.deg2rad(85),
-        'Omega': np.deg2rad(275),
-        'omega': np.deg2rad(90),
-        'rper_over_a': 8,
-        'eper': 0.01,
-    }
-
-    params_sim = {
-        'dt00': np.nan,
-        'max_periods': np.int64(3000),  # -1 for don't care
-        'save_every': np.int64(10),
-        'samples_per_Pcirc': np.int64(2000),
-        'rmax': 50 * params_phys['a'],
-        'save_last': np.int64(10),
-        'ca_saveall': np.int64(0),
-    }
-
-    run_simulation(np.int64(1e7), params_phys, params_sim, RESULT_PATH_PC_LOCAL, save_as='mat', post_process=True)
+    print('params loaded from', config_file)
+    run_simulation(np.int64(1e8), params_phys, params_sim, RESULT_PATH_PC_LOCAL, save_as='mat', post_process=True)
     # continue_simulation(1e8, RESULT_MID_PATH_PC_LOCAL, RESULT_PATH_PC_LOCAL, post_process=True)
 
     print("done")

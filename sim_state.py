@@ -9,7 +9,9 @@ import numpy as np
 import numba as nb
 from numpy.linalg import norm
 
-from sim.utils import REASON_NONE, OrbitalParameters, get_dt0
+from sim.utils import REASON_NONE, NEAR_APO, NEAR_PERI, OrbitalParameters, get_dt0
+
+
 
 spec = [
     # main arrays
@@ -20,24 +22,33 @@ spec = [
     # last steps arrays
     ('Xlast', nb.double[:, :]),
     ('Vlast', nb.double[:, :]),
+    ('DTlast', nb.double[:]),
     ('Tlast', nb.double[:]),
     # closest approaches arrays
     ('Xca', nb.double[:, :]),
     ('Vca', nb.double[:, :]),
     ('Tca', nb.double[:]),
     ('Ica', nb.int64[:]),
-    # indexes
+    # specific points arrays
+    ('dE_max_x', nb.double[:]),
+    ('dE_max_v', nb.double[:]),
+    ('jz_eff_x', nb.double[:]),
+    ('jz_eff_v', nb.double[:]),
+    # indexes / flags
     ('i', nb.int64),
     ('idx', nb.int64),
     ('caidx', nb.int64),
+    ('dE_max_i', nb.int64),
     ('nP', nb.int64),
+    ('region', nb.int64),
+    ('save_every_P_i', nb.int64),
     # parameters discovered during run
     ('steps_per_P', nb.int64),
-    ('closest_approach_r', nb.double),
     ('fin_reason', nb.int64),
-    ('dE_max', nb.double),
-    ('dE_max_i', nb.double),
     ('jz_eff_crossed_zero', nb.int64),
+    ('closest_approach_r', nb.double),
+    ('dE_max', nb.double),
+    ('jz_eff', nb.double),
 
     # configuration variables
     # physical
@@ -70,7 +81,6 @@ spec = [
     ('P_in', nb.double),
     ('P_out', nb.double),
     ('jz_eff0', nb.double),
-    ('jz_eff_P', nb.double),
     ('dt0', nb.double),
 ]
 
@@ -85,17 +95,16 @@ class SimState(object):
         self.T = np.empty(vsize, dtype=np.double)
         self.Xlast = np.empty((9, save_last), dtype=np.double)
         self.Vlast = np.empty((9, save_last), dtype=np.double)
+        self.DTlast = np.empty(save_last, dtype=np.double)
         self.Tlast = np.empty(save_last, dtype=np.double)
         self.Xca = np.empty((9, 100000), dtype=np.double)
         self.Vca = np.empty((9, 100000), dtype=np.double)
         self.Tca = np.empty(100000, dtype=np.double)
         self.Ica = np.empty(100000, dtype=np.int64)
-
-        # initialize integration indexes to zero
-        self.i = self.idx = self.caidx = self.dE_max_i = 0
-        self.nP = self.steps_per_P = self.dE_max = self.jz_eff_crossed_zero = 0
-        self.closest_approach_r = np.infty
-        self.fin_reason = REASON_NONE
+        self.dE_max_x = np.zeros(9, dtype=np.double)
+        self.dE_max_v = np.zeros(9, dtype=np.double)
+        self.jz_eff_x = np.zeros(9, dtype=np.double)
+        self.jz_eff_v = np.zeros(9, dtype=np.double)
 
 
 def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
@@ -135,18 +144,26 @@ def initialize_state(s):
                            inclination=s.inclination, Omega=s.Omega, omega=s.omega)
     # set orbital params
     s.E0 = op.E0
-    s.jz_eff0 = op.jz_eff
-    s.jz_eff_P = op.jz_eff
+    s.jz_eff0 = s.jz_eff = op.jz_eff
     s.P_in = op.P_in
     s.P_out = op.P_out
 
-    # set dt0
+    # set dt0 and U_init
     s.dt0 = get_dt0(s.G, s.m1, s.m2, op.a_in0, s.samples_per_Pcirc, s.dt00)
     s.U_init = - s.G * s.m1 * s.m2 / norm(op.a_in0)
+
+    # initialize integration flags
+    s.fin_reason = REASON_NONE
+    s.closest_approach_r = np.infty
+    s.save_every_P_i = 1
+    s.i = s.idx = s.caidx = s.dE_max_i = 0
+    s.nP = s.steps_per_P = s.dE_max = s.jz_eff_crossed_zero = 0
+    s.region = NEAR_PERI if norm(op.x0_in) < s.a else NEAR_APO
 
     # set initial simulation params
     s.Xlast[:, 0] = op.x0
     s.Vlast[:, 0] = op.v0
+    s.DTlast[0] = 0
     s.Tlast[0] = 0
 
 
