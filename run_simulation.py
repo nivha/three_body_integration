@@ -57,7 +57,7 @@ def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_d
     # print some stats
     print("dt0:", sim_state.dt0)
     print("jz_eff0:", sim_state.jz_eff0)
-    print("jz_eff_crossed_zero:", sim_state.jz_eff_crossed_zero)
+    print("jz_eff_crossings:", sim_state.jz_eff_crossings)
 
     # process simulation (advance and post_process)
     result_d = process_state(N, sim_state, post_process)
@@ -117,13 +117,13 @@ if __name__ == "__main__":
 
     proj = 'm105m205m305'
     rovera = 1.5
-    job_number = 255
+    job_number = 297
     config_file = os.path.join('Z:', os.sep, 'ConfigFiles', 'Jobs', proj, str(rovera), '{}.config'.format(job_number))
     with open(config_file, 'rb') as f:
         d = np.load(f).item()
     print(d)
     params_phys, params_sim = d['params_phys'], d['params_sim']
-    params_sim['max_periods'] = np.int64(6000)
+    params_sim['max_periods'] = np.int64(100)
     params_sim['save_every'] = np.int64(10)
     params_sim['save_every_P'] = np.int64(0)
 

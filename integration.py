@@ -199,32 +199,52 @@ def save_all_params(s, i):
 
 
 @jit(nopython=True)
+def handle_jz_eff(s, x_apo, v_apo):
+    jz_eff = get_jz_eff(s.G, s.m1, s.m2, s.m3, s.a, x_apo, v_apo)
+    s.jz_eff_x = x_apo; s.jz_eff_v = v_apo
+
+    # maintain crossings index
+    if jz_eff * s.jz_eff < 0:
+        s.jz_eff_crossings += 1
+    s.jz_eff = jz_eff
+
+    # maintain stats (compute mean and M2 with Welford algorithm)
+    s.jz_eff_n += 1
+    delta = s.jz_eff - s.jz_eff_mean
+    s.jz_eff_mean += delta / s.jz_eff_n
+    delta2 = s.jz_eff - s.jz_eff_mean
+    s.jz_eff_M2 += delta * delta2
+
+
+@jit(nopython=True)
 def treat_apocenter(s, i_apo, t):
     x_apo = s.Xlast[:, (s.i - i_apo) % s.save_last]
     v_apo = s.Vlast[:, (s.i - i_apo) % s.save_last]
-
-    # update dE_max
-    update_dE_max(s, x_apo, v_apo)
 
     # save params every save_every_P period
     if s.save_every_P > 0 and t / s.P_in - s.save_every_P * s.save_every_P_i >= 0:
         save_all_params(s, s.i - i_apo)
         s.save_every_P_i += 1
 
-    # maintain if jz_eff crossed zero
-    s.jz_eff = get_jz_eff(s.G, s.m1, s.m2, s.m3, s.a, x_apo, v_apo)
-    s.jz_eff_x = x_apo; s.jz_eff_v = v_apo
-    if s.jz_eff * s.jz_eff0 < 0: s.jz_eff_crossed_zero = 1
+    # update dE_max
+    update_dE_max(s, x_apo, v_apo)
+
+    # handle jz_eff stuff
+    handle_jz_eff(s, x_apo, v_apo)
 
 
 @jit(nopython=True)
 def treat_pericenter(s, r0, i_peri):
     if s.ca_saveall or r0 < s.closest_approach_r:
+        x_peri = s.Xlast[:, (s.i - i_peri) % s.save_last]
+        v_peri = s.Vlast[:, (s.i - i_peri) % s.save_last]
+
         s.closest_approach_r = r0
         s.Ica[s.caidx] = s.i - i_peri
-        s.Xca[:, s.caidx] = s.Xlast[:, (s.i - i_peri) % s.save_last]
-        s.Vca[:, s.caidx] = s.Vlast[:, (s.i - i_peri) % s.save_last]
+        s.Xca[:, s.caidx] = x_peri
+        s.Vca[:, s.caidx] = v_peri
         s.Tca[s.caidx] = s.Tlast[(s.i - i_peri) % s.save_last]
+        s.Jzeffca[s.caidx] = get_jz_eff(s.G, s.m1, s.m2, s.m3, s.a, x_peri, v_peri)
         s.caidx += 1
 
 

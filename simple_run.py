@@ -25,7 +25,7 @@ params_sim = {
     'samples_per_Pcirc': np.int64(1000),
     'max_periods': np.int64(3000),  # -1 for don't care
     'save_every': np.int64(10),
-    'save_every_P': np.int64(5),  # 0 for don't care
+    'save_every_P': np.int64(0),  # 0 for don't care
     'rmax': 50 * params_phys['a'],
     'save_last': np.int64(22),  # must be > 20
     'ca_saveall': np.int64(0),

@@ -29,6 +29,7 @@ spec = [
     ('Vca', nb.double[:, :]),
     ('Tca', nb.double[:]),
     ('Ica', nb.int64[:]),
+    ('Jzeffca', nb.int64[:]),
     # specific points arrays
     ('dE_max_x', nb.double[:]),
     ('dE_max_v', nb.double[:]),
@@ -45,10 +46,13 @@ spec = [
     # parameters discovered during run
     ('steps_per_P', nb.int64),
     ('fin_reason', nb.int64),
-    ('jz_eff_crossed_zero', nb.int64),
     ('closest_approach_r', nb.double),
     ('dE_max', nb.double),
     ('jz_eff', nb.double),
+    ('jz_eff_crossings', nb.int64),
+    ('jz_eff_n', nb.int64),
+    ('jz_eff_mean', nb.double),
+    ('jz_eff_M2', nb.double),
 
     # configuration variables
     # physical
@@ -101,6 +105,7 @@ class SimState(object):
         self.Vca = np.empty((9, 100000), dtype=np.double)
         self.Tca = np.empty(100000, dtype=np.double)
         self.Ica = np.empty(100000, dtype=np.int64)
+        self.Jzeffca = np.empty(100000, dtype=np.int64)
         self.dE_max_x = np.zeros(9, dtype=np.double)
         self.dE_max_v = np.zeros(9, dtype=np.double)
         self.jz_eff_x = np.zeros(9, dtype=np.double)
@@ -144,7 +149,7 @@ def initialize_state(s):
                            inclination=s.inclination, Omega=s.Omega, omega=s.omega)
     # set orbital params
     s.E0 = op.E0
-    s.jz_eff0 = s.jz_eff = op.jz_eff
+    s.jz_eff0 = op.jz_eff
     s.P_in = op.P_in
     s.P_out = op.P_out
 
@@ -156,15 +161,29 @@ def initialize_state(s):
     s.fin_reason = REASON_NONE
     s.closest_approach_r = np.infty
     s.save_every_P_i = 1
-    s.i = s.idx = s.caidx = s.dE_max_i = 0
-    s.nP = s.steps_per_P = s.dE_max = s.jz_eff_crossed_zero = 0
+    s.i = s.idx = s.dE_max_i = 0
+    s.nP = s.steps_per_P = s.dE_max = 0
     s.region = NEAR_PERI if norm(op.x0_in) < s.a else NEAR_APO
+
+    # jz_eff stuff
+    s.jz_eff = op.jz_eff
+    s.jz_eff_crossings = 0
+    s.jz_eff_mean = op.jz_eff
+    s.jz_eff_n = 1
+    s.jz_eff_M2 = 0
 
     # set initial simulation params
     s.Xlast[:, 0] = op.x0
     s.Vlast[:, 0] = op.v0
     s.DTlast[0] = 0
     s.Tlast[0] = 0
+    # set first ca values
+    s.Xca[:, 0] = op.x0
+    s.Vca[:, 0] = op.v0
+    s.Tca[0] = 0
+    s.Ica[0] = 0
+    s.Jzeffca[0] = op.jz_eff
+    s.caidx = 1
 
 
 def get_state_dict(s):
