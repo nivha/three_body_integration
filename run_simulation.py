@@ -116,8 +116,8 @@ if __name__ == "__main__":
     RESULT_PATH_PC_LOCAL = os.path.join('c:', os.sep, 'tmp', 'sim1.mat')
 
     proj = 'm105m205m305_1000'
-    rovera = 5
-    job_number = 122
+    rovera = 3.5
+    job_number = 346
     config_file = os.path.join('Z:', os.sep, 'ConfigFiles', 'Jobs', proj, str(rovera), '{}.config'.format(job_number))
     with open(config_file, 'rb') as f:
         d = np.load(f).item()

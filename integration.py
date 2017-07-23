@@ -242,12 +242,13 @@ def treat_pericenter(s, r0, i_peri):
     if s.ca_saveall or r0 < s.closest_approach_r:
         x_peri = s.Xlast[:, i_peri % s.save_last]
         v_peri = s.Vlast[:, i_peri % s.save_last]
+        t_peri = s.Tlast[i_peri % s.save_last]
 
         s.closest_approach_r = r0
         s.Ica[s.caidx] = i_peri
         s.Xca[:, s.caidx] = x_peri
         s.Vca[:, s.caidx] = v_peri
-        s.Tca[s.caidx] = s.Tlast[i_peri % s.save_last]
+        s.Tca[s.caidx] = t_peri
         s.Jzeffca[s.caidx] = get_jz_eff(s.G, s.m1, s.m2, s.m3, s.a, x_peri, v_peri)
         s.caidx += 1
 
@@ -268,10 +269,10 @@ def save_state_params(s, x, v, dt, t):
     i_delta = 1
     if s.i < 2 * i_delta: return
     r0, rm, rp = get_r0_rm_rp(s, i_delta)
-    if s.a < r0 < 2.5 * s.a and is_apo(r0, rm, rp):
-        treat_apocenter(s, i_apo=s.i - i_delta, t=t)
-    elif r0 < s.a and is_peri(r0, rm, rp):
+    if r0 < s.a and is_peri(r0, rm, rp):
         treat_pericenter(s, r0, i_peri=s.i - i_delta)
+    elif s.a < r0 < 2.5 * s.a and is_apo(r0, rm, rp):
+        treat_apocenter(s, i_apo=s.i - i_delta, t=t)
 
 
 @jit(nopython=True)
