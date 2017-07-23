@@ -115,16 +115,16 @@ def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_d
 if __name__ == "__main__":
     RESULT_PATH_PC_LOCAL = os.path.join('c:', os.sep, 'tmp', 'sim1.mat')
 
-    proj = 'm105m205m305'
-    rovera = 1.5
-    job_number = 297
+    proj = 'm105m205m305_1000'
+    rovera = 5
+    job_number = 122
     config_file = os.path.join('Z:', os.sep, 'ConfigFiles', 'Jobs', proj, str(rovera), '{}.config'.format(job_number))
     with open(config_file, 'rb') as f:
         d = np.load(f).item()
     print(d)
     params_phys, params_sim = d['params_phys'], d['params_sim']
-    params_sim['max_periods'] = np.int64(100)
-    params_sim['save_every'] = np.int64(10)
+    params_sim['max_periods'] = np.int64(1000)
+    params_sim['save_every'] = np.int64(40)
     params_sim['save_every_P'] = np.int64(0)
 
     print('params loaded from', config_file)

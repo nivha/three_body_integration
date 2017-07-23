@@ -10,7 +10,6 @@ from numpy.linalg import norm
 from numba import jit
 from sim.utils import cross_jit
 from sim.utils import REASON_NONE, TNAN, MAX_PERIODS, SYSTEM_BROKEN, BAD, FINISHED_ITERATIONS
-from sim.utils import NEAR_APO, NEAR_PERI
 
 
 @jit(nopython=True)
@@ -95,16 +94,18 @@ def get_jz_eff(G, m1, m2, m3, a, x, v):
 
 
 @jit(nopython=True)
-def get_r0_rm_rp(s, i0, im):
+def get_r0_rm_rp(s, i_delta):
     """ compute 3 points r0, r_minus and r_plus to determine apsis
-        compute these at i0 and im before current i
+        compute these at s.i-i_delta and  s.i-2*i_delta
     """
-    x0 = s.Xlast[:, (s.i - i0) % s.save_last]
-    r0 = norm(x0[0:3] - x0[3:6])
     xp = s.Xlast[:, s.i % s.save_last]
+    x0 = s.Xlast[:, (s.i - i_delta) % s.save_last]
+    xm = s.Xlast[:, (s.i - 2 * i_delta) % s.save_last]
+
     rp = norm(xp[0:3] - xp[3:6])
-    xm = s.Xlast[:, (s.i - im) % s.save_last]
+    r0 = norm(x0[0:3] - x0[3:6])
     rm = norm(xm[0:3] - xm[3:6])
+
     return r0, rm, rp
 
 
@@ -201,11 +202,14 @@ def save_all_params(s, i):
 @jit(nopython=True)
 def handle_jz_eff(s, x_apo, v_apo):
     jz_eff = get_jz_eff(s.G, s.m1, s.m2, s.m3, s.a, x_apo, v_apo)
-    s.jz_eff_x = x_apo; s.jz_eff_v = v_apo
 
     # maintain crossings index
     if jz_eff * s.jz_eff < 0:
         s.jz_eff_crossings += 1
+    if abs(jz_eff) < s.jz_eff_min:
+        s.jz_eff_min = jz_eff
+        s.jz_eff_min_x = x_apo
+        s.jz_eff_min_v = v_apo
     s.jz_eff = jz_eff
 
     # maintain stats (compute mean and M2 with Welford algorithm)
@@ -218,12 +222,12 @@ def handle_jz_eff(s, x_apo, v_apo):
 
 @jit(nopython=True)
 def treat_apocenter(s, i_apo, t):
-    x_apo = s.Xlast[:, (s.i - i_apo) % s.save_last]
-    v_apo = s.Vlast[:, (s.i - i_apo) % s.save_last]
+    x_apo = s.Xlast[:, i_apo % s.save_last]
+    v_apo = s.Vlast[:, i_apo % s.save_last]
 
     # save params every save_every_P period
     if s.save_every_P > 0 and t / s.P_in - s.save_every_P * s.save_every_P_i >= 0:
-        save_all_params(s, s.i - i_apo)
+        save_all_params(s, i_apo)
         s.save_every_P_i += 1
 
     # update dE_max
@@ -236,14 +240,14 @@ def treat_apocenter(s, i_apo, t):
 @jit(nopython=True)
 def treat_pericenter(s, r0, i_peri):
     if s.ca_saveall or r0 < s.closest_approach_r:
-        x_peri = s.Xlast[:, (s.i - i_peri) % s.save_last]
-        v_peri = s.Vlast[:, (s.i - i_peri) % s.save_last]
+        x_peri = s.Xlast[:, i_peri % s.save_last]
+        v_peri = s.Vlast[:, i_peri % s.save_last]
 
         s.closest_approach_r = r0
-        s.Ica[s.caidx] = s.i - i_peri
+        s.Ica[s.caidx] = i_peri
         s.Xca[:, s.caidx] = x_peri
         s.Vca[:, s.caidx] = v_peri
-        s.Tca[s.caidx] = s.Tlast[(s.i - i_peri) % s.save_last]
+        s.Tca[s.caidx] = s.Tlast[i_peri % s.save_last]
         s.Jzeffca[s.caidx] = get_jz_eff(s.G, s.m1, s.m2, s.m3, s.a, x_peri, v_peri)
         s.caidx += 1
 
@@ -261,16 +265,13 @@ def save_state_params(s, x, v, dt, t):
         save_all_params(s, s.i)
 
     # handle apsis stuff
-    i0 = 5
-    im = 10
-    if s.i < im: return
-    r0, rm, rp = get_r0_rm_rp(s, i0, im)
-    if r0 > s.a and s.region == NEAR_APO and is_apo(r0, rm, rp):
-        treat_apocenter(s, i_apo=i0, t=t)
-        s.region = NEAR_PERI
-    elif r0 < s.a and s.region == NEAR_PERI and is_peri(r0, rm, rp):
-        treat_pericenter(s, r0, i_peri=i0)
-        s.region = NEAR_APO
+    i_delta = 1
+    if s.i < 2 * i_delta: return
+    r0, rm, rp = get_r0_rm_rp(s, i_delta)
+    if s.a < r0 < 2.5 * s.a and is_apo(r0, rm, rp):
+        treat_apocenter(s, i_apo=s.i - i_delta, t=t)
+    elif r0 < s.a and is_peri(r0, rm, rp):
+        treat_pericenter(s, r0, i_peri=s.i - i_delta)
 
 
 @jit(nopython=True)

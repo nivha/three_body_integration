@@ -9,8 +9,7 @@ import numpy as np
 import numba as nb
 from numpy.linalg import norm
 
-from sim.utils import REASON_NONE, NEAR_APO, NEAR_PERI, OrbitalParameters, get_dt0
-
+from sim.utils import REASON_NONE, OrbitalParameters, get_dt0
 
 
 spec = [
@@ -29,19 +28,18 @@ spec = [
     ('Vca', nb.double[:, :]),
     ('Tca', nb.double[:]),
     ('Ica', nb.int64[:]),
-    ('Jzeffca', nb.int64[:]),
+    ('Jzeffca', nb.double[:]),
     # specific points arrays
     ('dE_max_x', nb.double[:]),
     ('dE_max_v', nb.double[:]),
-    ('jz_eff_x', nb.double[:]),
-    ('jz_eff_v', nb.double[:]),
+    ('jz_eff_min_x', nb.double[:]),
+    ('jz_eff_min_v', nb.double[:]),
     # indexes / flags
     ('i', nb.int64),
     ('idx', nb.int64),
     ('caidx', nb.int64),
     ('dE_max_i', nb.int64),
     ('nP', nb.int64),
-    ('region', nb.int64),
     ('save_every_P_i', nb.int64),
     # parameters discovered during run
     ('steps_per_P', nb.int64),
@@ -51,6 +49,7 @@ spec = [
     ('jz_eff', nb.double),
     ('jz_eff_crossings', nb.int64),
     ('jz_eff_n', nb.int64),
+    ('jz_eff_min', nb.double),
     ('jz_eff_mean', nb.double),
     ('jz_eff_M2', nb.double),
 
@@ -105,11 +104,11 @@ class SimState(object):
         self.Vca = np.empty((9, 100000), dtype=np.double)
         self.Tca = np.empty(100000, dtype=np.double)
         self.Ica = np.empty(100000, dtype=np.int64)
-        self.Jzeffca = np.empty(100000, dtype=np.int64)
+        self.Jzeffca = np.empty(100000, dtype=np.double)
         self.dE_max_x = np.zeros(9, dtype=np.double)
         self.dE_max_v = np.zeros(9, dtype=np.double)
-        self.jz_eff_x = np.zeros(9, dtype=np.double)
-        self.jz_eff_v = np.zeros(9, dtype=np.double)
+        self.jz_eff_min_x = np.zeros(9, dtype=np.double)
+        self.jz_eff_min_v = np.zeros(9, dtype=np.double)
 
 
 def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
@@ -163,11 +162,11 @@ def initialize_state(s):
     s.save_every_P_i = 1
     s.i = s.idx = s.dE_max_i = 0
     s.nP = s.steps_per_P = s.dE_max = 0
-    s.region = NEAR_PERI if norm(op.x0_in) < s.a else NEAR_APO
 
     # jz_eff stuff
     s.jz_eff = op.jz_eff
     s.jz_eff_crossings = 0
+    s.jz_eff_min = np.infty
     s.jz_eff_mean = op.jz_eff
     s.jz_eff_n = 1
     s.jz_eff_M2 = 0
@@ -198,6 +197,7 @@ def get_state_dict(s):
     s.Xca = s.Xca[:, :s.caidx]
     s.Vca = s.Vca[:, :s.caidx]
     s.Tca = s.Tca[:s.caidx]
+    s.Jzeffca = s.Jzeffca[:s.caidx]
 
     # # fix (shift) lasts arrays
     # s.Xlast = np.roll(s.Xlast, - s.i % s.save_last, axis=1)
