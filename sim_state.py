@@ -185,10 +185,8 @@ def initialize_state(s):
     s.caidx = 1
 
 
-def get_state_dict(s):
-    """Dumps all sim state variables into a file"""
-
-    # chop the last bit of the storage arrays
+def chop_arrays(s):
+    """ Chops the irrelevant end of the storage arrays using the relevant end-index """
     s.X = s.X[:, :s.idx]
     s.V = s.V[:, :s.idx]
     s.DT = s.DT[:s.idx]
@@ -198,6 +196,12 @@ def get_state_dict(s):
     s.Vca = s.Vca[:, :s.caidx]
     s.Tca = s.Tca[:s.caidx]
     s.Jzeffca = s.Jzeffca[:s.caidx]
+
+
+def get_state_dict(s):
+    """Dumps all sim state variables into a file"""
+
+    chop_arrays(s)
 
     # # fix (shift) lasts arrays
     # s.Xlast = np.roll(s.Xlast, - s.i % s.save_last, axis=1)

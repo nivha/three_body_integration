@@ -6,10 +6,8 @@ Created on Fri Jun 30 10:13:41 2017
 """
 
 import numpy as np
-from sim.utils import year, t_unit, r_dissip
-import os
 from scipy.io import savemat
-from sim.sim_state import SimState, get_state_dict, inject_config_params, initialize_state
+from sim.sim_state import SimState, get_state_dict, inject_config_params, initialize_state, chop_arrays
 from sim.integration import advance_state
 from sim.post_processing import _post_process
 
@@ -24,6 +22,7 @@ def process_state(N, sim_state, post_process=False):
     # integrate
     print('advancing state', flush=True)
     advance_state(sim_state, N)
+    chop_arrays(sim_state)
 
     # dump state (with or without post processing)
     if post_process:
@@ -112,26 +111,6 @@ def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_d
 #     print("dumped state to {}".format(path_dst_dump))
 
 
-if __name__ == "__main__":
-    RESULT_PATH_PC_LOCAL = os.path.join('c:', os.sep, 'tmp', 'sim1.mat')
-
-    proj = 'm105m205m305_1000'
-    rovera = 3.5
-    job_number = 346
-    config_file = os.path.join('Z:', os.sep, 'ConfigFiles', 'Jobs', proj, str(rovera), '{}.config'.format(job_number))
-    with open(config_file, 'rb') as f:
-        d = np.load(f).item()
-    print(d)
-    params_phys, params_sim = d['params_phys'], d['params_sim']
-    params_sim['max_periods'] = np.int64(1000)
-    params_sim['save_every'] = np.int64(40)
-    params_sim['save_every_P'] = np.int64(0)
-
-    print('params loaded from', config_file)
-    run_simulation(np.int64(1e8), params_phys, params_sim, RESULT_PATH_PC_LOCAL, save_as='mat', post_process=True)
-    # continue_simulation(1e8, RESULT_MID_PATH_PC_LOCAL, RESULT_PATH_PC_LOCAL, post_process=True)
-
-    print("done")
 
 
 

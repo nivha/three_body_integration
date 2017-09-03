@@ -261,7 +261,7 @@ def save_state_params(s, x, v, dt, t):
     s.DTlast[s.i % s.save_last] = dt
     s.Tlast[s.i % s.save_last] = t
 
-    # maintain "all" arrays
+    # save all state every once in a while
     if not s.save_every_P and s.i % s.save_every == 0:
         save_all_params(s, s.i)
 
