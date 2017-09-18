@@ -38,7 +38,7 @@ def rescale(op, scaling_params):
 
 def _post_process(s, scaling_params):
     op = OrbitalParameters(G=s.G, m1=s.m1, m2=s.m2, m3=s.m3, e=s.e, a=s.a, M0_in=s.M0_in,
-                           rper_over_a=s.rper_over_a, eper=s.eper, f_out=s.f_out,
+                           rper_over_a=s.rper_over_a, eper=s.eper, M0_out=s.M0_out,
                            inclination=s.inclination, Omega=s.Omega, omega=s.omega)
 
     state_d = get_state_dict(s)

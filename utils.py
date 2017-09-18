@@ -160,7 +160,7 @@ class OrbitalParameters:
     def __init__(self, **kwargs):
         self.set_orbital_parameters(**kwargs)
 
-    def set_orbital_parameters(s, G, m1, m2, m3, e, a, M0_in, rper_over_a, eper, f_out, inclination, Omega, omega):
+    def set_orbital_parameters(s, G, m1, m2, m3, e, a, M0_in, rper_over_a, eper, M0_out, inclination, Omega, omega):
         # basic params
         s.aper = rper_over_a / (1 - eper)
         s.Min = m1 + m2
@@ -168,12 +168,13 @@ class OrbitalParameters:
         s.muin = m1 * m2 / s.Min
         s.muout = s.Min * m3 / s.Mout
         s.f_in = f_from_M(M0_in, e)
+        s.f_out = f_from_M(M0_out, eper)
         print('f_in:', s.f_in)
 
         # initialize state for outer orbit
         s.jv_out0, s.ev_out0 = get_je(eper, 0, 0, 0)
         s.Jv_out0 = s.jv_out0 * sqrt(G * s.Mout * s.aper)
-        s.x_out0, s.v_out0 = get_xv(s.ev_out0, s.Jv_out0, s.aper, f_out)
+        s.x_out0, s.v_out0 = get_xv(s.ev_out0, s.Jv_out0, s.aper, s.f_out)
         s.x0_cms12 = -(m3 / s.Mout) * s.x_out0
         s.v0_cms12 = -(m3 / s.Mout) * s.v_out0
         s.x03 = (s.Min / s.Mout) * s.x_out0

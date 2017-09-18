@@ -39,7 +39,7 @@ def simple():
         'a': np.double(1),
         'e': 0.1,
         'M0_in': 2.649,
-        'f_out': np.deg2rad(0),
+        'M0_out': np.deg2rad(0),
         'inclination': 1.489,
         'Omega': 1.34,
         'omega': 0.932,
@@ -50,7 +50,7 @@ def simple():
     params_sim = {
         'dt00': np.nan,  # np.nan for don't care
         'samples_per_Pcirc': np.int64(3000),
-        'max_periods': np.int64(1000),  # -1 for don't care
+        'max_periods': np.int64(10000),  # -1 for don't care
         'save_every': np.int64(20),
         'save_every_P': np.int64(0),  # 0 for don't care
         'rmax': 50 * params_phys['a'],
@@ -69,7 +69,7 @@ def boaz_paper():
         'a': np.double(1),
         'e': 0.1,
         'M0_in': np.deg2rad(0),
-        'f_out': np.deg2rad(0),
+        'M0_out': np.deg2rad(0),
         'inclination': np.deg2rad(98),
         'Omega': np.deg2rad(0),
         'omega': np.deg2rad(0),
@@ -99,7 +99,7 @@ def boaz_wh():
         'a': np.double(1),
         'e': 0.1,
         'M0_in': np.deg2rad(0),
-        'f_out': np.deg2rad(0),
+        'M0_out': np.deg2rad(0),
         'inclination': np.deg2rad(85),
         'Omega': np.deg2rad(275),
         'omega': np.deg2rad(90),

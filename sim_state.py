@@ -62,7 +62,7 @@ spec = [
     ('a', nb.double),
     ('e', nb.double),
     ('M0_in', nb.double),
-    ('f_out', nb.double),
+    ('M0_out', nb.double),
     ('inclination', nb.double),
     ('Omega', nb.double),
     ('omega', nb.double),
@@ -79,6 +79,8 @@ spec = [
     ('ca_saveall', nb.double),
 
     # computed from configuration variables
+    ('f_in', nb.double),
+    ('f_out', nb.double),
     ('E0', nb.double),
     ('U_init', nb.double),
     ('P_in', nb.double),
@@ -112,7 +114,7 @@ class SimState(object):
 
 
 def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
-                         f_out, inclination, Omega, omega, rper_over_a, eper,
+                         M0_out, inclination, Omega, omega, rper_over_a, eper,
                          dt00, max_periods, save_every, save_every_P, samples_per_Pcirc, save_last, rmax, ca_saveall):
     # dump args to properties
     s.G = G
@@ -122,7 +124,7 @@ def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
     s.a = a
     s.e = e
     s.M0_in = M0_in
-    s.f_out = f_out
+    s.M0_out = M0_out
     s.inclination = inclination
     s.Omega = Omega
     s.omega = omega
@@ -144,9 +146,11 @@ def initialize_state(s):
     """
     # compute orbital parameters from config params
     op = OrbitalParameters(G=s.G, m1=s.m1, m2=s.m2, m3=s.m3, e=s.e, a=s.a, M0_in=s.M0_in,
-                           rper_over_a=s.rper_over_a, eper=s.eper, f_out=s.f_out,
+                           rper_over_a=s.rper_over_a, eper=s.eper, M0_out=s.M0_out,
                            inclination=s.inclination, Omega=s.Omega, omega=s.omega)
     # set orbital params
+    s.f_in = op.f_in
+    s.f_out = op.f_out
     s.E0 = op.E0
     s.jz_eff0 = op.jz_eff
     s.P_in = op.P_in
