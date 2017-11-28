@@ -72,6 +72,7 @@ spec = [
     ('dt00', nb.double),
     ('max_periods', nb.int64),
     ('save_every', nb.int64),
+    ('dump_every', nb.int64),
     ('save_every_P', nb.int64),
     ('samples_per_Pcirc', nb.int64),
     ('save_last', nb.int64),
@@ -115,7 +116,7 @@ class SimState(object):
 
 def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
                          M0_out, inclination, Omega, omega, rper_over_a, eper,
-                         dt00, max_periods, save_every, save_every_P, samples_per_Pcirc, save_last, rmax, ca_saveall):
+                         dt00, max_periods, dump_every, save_every, save_every_P, samples_per_Pcirc, save_last, rmax, ca_saveall):
     # dump args to properties
     s.G = G
     s.m1 = m1
@@ -132,6 +133,7 @@ def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
     s.eper = eper
     s.dt00 = dt00
     s.max_periods = max_periods
+    s.dump_every = dump_every
     s.save_every = save_every
     s.save_every_P = save_every_P
     s.samples_per_Pcirc = samples_per_Pcirc
@@ -187,6 +189,19 @@ def initialize_state(s):
     s.Ica[0] = 0
     s.Jzeffca[0] = op.jz_eff
     s.caidx = 1
+
+
+def make_copy(s):
+    """ Returns a copy of sim_state s (a new SimState instance with all attributes copied) """
+    vsize = max(s.idx, s.caidx)
+    s_copy = SimState(vsize, s.save_last)
+    for var_name, var_type in spec:
+        # if var is an array make a copy
+        if isinstance(var_type, nb.types.npytypes.Array):
+            setattr(s_copy, var_name, getattr(s, var_name).copy())
+        else:
+            setattr(s_copy, var_name, getattr(s, var_name))
+    return s_copy
 
 
 def chop_arrays(s):

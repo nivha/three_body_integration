@@ -12,28 +12,28 @@ from sim.utils import OrbitalParameters
 from sim.sim_state import get_state_dict
 
 
-def rescale(op, scaling_params):
-    # rescale variables
-    op.Msun = scaling_params['Msun']
-    op.au = scaling_params['au']
-    op.t_unit = scaling_params['t_unit']
-    op.G = scaling_params['G']
-
-    op.X = op.X * op.au
-    op.V = op.V * op.au / op.t_unit
-    op.DT = op.DT * op.t_unit
-    op.dt0 = op.dt0 * op.t_unit
-    op.m1 = op.m1 * op.Msun
-    op.m2 = op.m2 * op.Msun
-    op.m3 = op.m3 * op.Msun
-    op.muin = op.muin * op.Msun
-    op.Min = op.Min * op.Msun
-    op.aper = op.aper * op.au
-    # s.eper = s.eper
-    # op.ev0 = op.ev0
-    # op.jv0 = op.jv0
-    op.Xca = op.Xca * op.au
-    op.Vca = op.Vca * op.au / op.t_unit
+# def rescale(op, scaling_params):
+#     # rescale variables
+#     op.Msun = scaling_params['Msun']
+#     op.au = scaling_params['au']
+#     op.t_unit = scaling_params['t_unit']
+#     op.G = scaling_params['G']
+#
+#     op.X = op.X * op.au
+#     op.V = op.V * op.au / op.t_unit
+#     op.DT = op.DT * op.t_unit
+#     op.dt0 = op.dt0 * op.t_unit
+#     op.m1 = op.m1 * op.Msun
+#     op.m2 = op.m2 * op.Msun
+#     op.m3 = op.m3 * op.Msun
+#     op.muin = op.muin * op.Msun
+#     op.Min = op.Min * op.Msun
+#     op.aper = op.aper * op.au
+#     # s.eper = s.eper
+#     # op.ev0 = op.ev0
+#     # op.jv0 = op.jv0
+#     op.Xca = op.Xca * op.au
+#     op.Vca = op.Vca * op.au / op.t_unit
 
 
 def _post_process(s, scaling_params):
@@ -45,7 +45,7 @@ def _post_process(s, scaling_params):
     for k, v in state_d.items():
         setattr(op, k, v)
 
-    rescale(op, scaling_params)
+    # rescale(op, scaling_params)
 
     # total energy constant (brute force)
     op.v12 = abs2_each(op.V[0:3, :])

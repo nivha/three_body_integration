@@ -7,12 +7,12 @@ Created on Fri Jun 30 10:13:41 2017
 
 import numpy as np
 from scipy.io import savemat
-from sim.sim_state import SimState, get_state_dict, inject_config_params, initialize_state, chop_arrays
-from sim.integration import advance_state
+from sim.sim_state import SimState, get_state_dict, inject_config_params, initialize_state, chop_arrays, make_copy
+from sim.integration import advance_state, FINISHED_ITERATIONS
 from sim.post_processing import _post_process
 
 
-def process_state(N, sim_state, post_process=False):
+def process_state(N, sim_state, dump_to, post_process=False):
 
     # don't integrate if
     if sim_state.E0 > 0:
@@ -21,7 +21,18 @@ def process_state(N, sim_state, post_process=False):
 
     # integrate
     print('advancing state', flush=True)
-    advance_state(sim_state, N)
+    while sim_state.i < N:
+        advance_state(sim_state, sim_state.i + sim_state.dump_every)
+        if sim_state.fin_reason != FINISHED_ITERATIONS: break
+        print('i/N_total:', (sim_state.i / N))
+
+        # dump a copy of the state
+        sim_state_copy = make_copy(sim_state)
+        chop_arrays(sim_state_copy)
+        d = get_state_dict(sim_state_copy)
+        savemat(dump_to, mdict=d, oned_as='column')
+        print("dumped state to {}".format(dump_to))
+
     chop_arrays(sim_state)
 
     # dump state (with or without post processing)
@@ -35,12 +46,12 @@ def process_state(N, sim_state, post_process=False):
     return get_state_dict(sim_state)
 
 
-def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_dump=None, post_process=False):
+def run_simulation(N, params_phys, params_sim, save_to, dump_to=None, save_as='mat', d_dump=None, post_process=False):
 
     print('run simulation')
 
     # create state instance
-    vsize = max(np.int64(N / params_sim['save_every']), params_sim['max_periods'])
+    vsize = max(np.int64(1 + N / params_sim['save_every']), params_sim['max_periods'])
     print('vsize:', vsize)
     sim_state = SimState(vsize, params_sim['save_last'])
 
@@ -59,7 +70,7 @@ def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_d
     print("jz_eff_crossings:", sim_state.jz_eff_crossings)
 
     # process simulation (advance and post_process)
-    result_d = process_state(N, sim_state, post_process)
+    result_d = process_state(N, sim_state, dump_to, post_process)
 
     # dump d_dump into result
     if d_dump is not None:
@@ -68,9 +79,9 @@ def run_simulation(N, params_phys, params_sim, path_dst_dump, save_as='mat', d_d
     # dump
     if save_as != 'mat':
         raise Exception('save_as must be \'mat\'')
-    savemat(path_dst_dump, mdict=result_d, oned_as='column')
+    savemat(save_to, mdict=result_d, oned_as='column')
 
-    print("dumped state to {}".format(path_dst_dump))
+    print("dumped state to {}".format(save_to))
 
 
 # def load_state_from_file(path_src_dump):

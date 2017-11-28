@@ -10,21 +10,8 @@ from numpy.linalg import norm
 from numpy import sin, cos, sqrt, cross, arctan2
 import numba as nb
 
-# Physical constants(cgs)
-G = 6.67259e-8
-Msun = 1.989e33
-c = 2.99792458e10
-au = 14959787070000
-year = 3600 * 24 * 365
-
 # Simulation constants
 N = 2e11
-t_unit = np.sqrt(au**3 / G / Msun)
-r_dissip_cm = 4e9  # in cm
-r_dissip = r_dissip_cm / au  # in scaled units
-
-# Simulation finish reasons
-REASON_NONE, FINISHED_ITERATIONS, BAD, TNAN, MAX_PERIODS, SYSTEM_BROKEN = range(6)
 
 # Algebraic operations
 abs2_each = lambda x: np.sum(np.square(x), axis=0)  # squared norm for each column

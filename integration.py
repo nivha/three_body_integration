@@ -9,8 +9,9 @@ import numpy as np
 from numpy.linalg import norm
 from numba import jit
 from sim.utils import cross_jit
-from sim.utils import REASON_NONE, TNAN, MAX_PERIODS, SYSTEM_BROKEN, BAD, FINISHED_ITERATIONS
 
+# Simulation finish reasons
+REASON_NONE, FINISHED_ITERATIONS, BAD, TNAN, MAX_PERIODS, SYSTEM_BROKEN = range(6)
 
 @jit(nopython=True)
 def get_R(x):
@@ -166,7 +167,7 @@ def check_stopping_conditions(s, x, v, t, N):
             print("steps per P:", s.i)
 
         if s.nP % 1000 == 0:
-            print('nP:', s.nP, 'i', s.i, '/', N, '(', (s.i / N), ')')
+            print('nP:', s.nP, 'i:', s.i, 'N:', N)
             if is_system_broken(s.G, s.m1, s.m2, s.m3, x, v, s.rmax):
                 print('[BREAK] system broken')
                 fin_reason = SYSTEM_BROKEN
