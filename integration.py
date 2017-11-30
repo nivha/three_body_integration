@@ -9,9 +9,8 @@ import numpy as np
 from numpy.linalg import norm
 from numba import jit
 from sim.utils import cross_jit
+from sim.utils import REASON_NONE, TNAN, MAX_PERIODS, SYSTEM_BROKEN, BAD, FINISHED_ITERATIONS
 
-# Simulation finish reasons
-REASON_NONE, FINISHED_ITERATIONS, BAD, TNAN, MAX_PERIODS, SYSTEM_BROKEN = range(6)
 
 @jit(nopython=True)
 def get_R(x):

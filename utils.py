@@ -13,6 +13,9 @@ import numba as nb
 # Simulation constants
 N = 2e11
 
+# Simulation finish reasons
+REASON_NONE, FINISHED_ITERATIONS, BAD, TNAN, MAX_PERIODS, SYSTEM_BROKEN = range(6)
+
 # Algebraic operations
 abs2_each = lambda x: np.sum(np.square(x), axis=0)  # squared norm for each column
 cnorm = lambda x: np.sqrt(abs2_each(x))  # norm of each column

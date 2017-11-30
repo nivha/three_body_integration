@@ -7,8 +7,9 @@ Created on Fri Jun 30 10:13:41 2017
 
 import numpy as np
 from scipy.io import savemat
+from sim.utils import FINISHED_ITERATIONS
 from sim.sim_state import SimState, get_state_dict, inject_config_params, initialize_state, chop_arrays, make_copy
-from sim.integration import advance_state, FINISHED_ITERATIONS
+from sim.integration import advance_state
 from sim.post_processing import _post_process
 
 
