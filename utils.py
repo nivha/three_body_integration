@@ -11,7 +11,7 @@ from numpy import sin, cos, sqrt, cross, arctan2
 import numba as nb
 
 # Simulation constants
-N = 2e11
+N = 2e11  # maximum iterations
 
 # Simulation finish reasons
 REASON_NONE, FINISHED_ITERATIONS, BAD, TNAN, MAX_PERIODS, SYSTEM_BROKEN = range(6)
@@ -41,7 +41,7 @@ def cross_jit_(vec1, vec2, result):
 
 
 def get_je(e, i, Omega, omega):
-
+    """ Calculate the angular momentum and eccentricity vector, given the orbital elements """
     j = sqrt(1 - e**2)
     jx = j * sin(i) * sin(Omega)
     jy = -j * sin(i) * cos(Omega)
@@ -120,11 +120,11 @@ def f_from_M(M, e, tol=1e-6):
 
 def get_dt0(G, m1, m2, a_in0, samples_per_Pcirc, dt00):
     Min = m1 + m2
-    Pcirc = 2 * np.pi * np.sqrt(a_in0 ** 3 / G / Min)
+    P = 2 * np.pi * np.sqrt(a_in0 ** 3 / G / Min)
     if not np.isnan(dt00):
         dt0 = dt00 * np.sqrt(a_in0**3 / G / Min)
     else:
-        dt0 = Pcirc / samples_per_Pcirc
+        dt0 = P / samples_per_Pcirc
     return dt0
 
 
@@ -203,7 +203,7 @@ class OrbitalParameters:
         s.jz_eff = get_jz_eff(G, m1, m2, m3, a, e, inclination, rper_over_a, eper)
 
         # Kozai time
-        s.tau = 2 * (sqrt(G * s.Min) / (G * m3)) * (s.aper ** 3 / a**(3 / 2)) * (1 - eper**2)**(3 / 2)
+        # s.tau = 2 * (sqrt(G * s.Min) / (G * m3)) * (s.aper ** 3 / a**(3 / 2)) * (1 - eper**2)**(3 / 2)
 
 
 def inspect_config_file(path):

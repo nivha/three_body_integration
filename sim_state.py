@@ -116,7 +116,8 @@ class SimState(object):
 
 def inject_config_params(s, G, m1, m2, m3, a, e, M0_in,
                          M0_out, inclination, Omega, omega, rper_over_a, eper,
-                         dt00, max_periods, dump_every, save_every, save_every_P, samples_per_Pcirc, save_last, rmax, ca_saveall):
+                         dt00, max_periods, dump_every, save_every, save_every_P,
+                         samples_per_Pcirc, save_last, rmax, ca_saveall):
     # dump args to properties
     s.G = G
     s.m1 = m1

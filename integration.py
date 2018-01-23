@@ -14,6 +14,7 @@ from sim.utils import REASON_NONE, TNAN, MAX_PERIODS, SYSTEM_BROKEN, BAD, FINISH
 
 @jit(nopython=True)
 def get_R(x):
+    """ Returns positions vector """
     x1 = x[0:3]
     x2 = x[3:6]
     x3 = x[6:9]
@@ -26,6 +27,7 @@ def get_R(x):
 
 @jit(nopython=True)
 def getA(G, m1, m2, m3, R):
+    """ Returns accelerations vector """
     r12 = R[0:3]
     r13 = R[3:6]
     r23 = R[6:9]
@@ -44,12 +46,14 @@ def fU(U, U0):
 
 @jit(nopython=True)
 def get_U(G, m1, m2, m3, R):
+    """ Returns potential energy """
     U = - G * (m1 * m2 / norm(R[0:3]) + m1 * m3 / norm(R[3:6]) + m2 * m3 / norm(R[6:9]))
     return U
 
 
 @jit(nopython=True)
 def get_K(v, m1, m2, m3):
+    """ Returns kinetic energy """
     v1 = v[0:3]
     v2 = v[3:6]
     v3 = v[6:9]
@@ -128,8 +132,8 @@ def is_system_broken(G, m1, m2, m3, x, v, rmax):
     r23 = norm(R[6:9])
 
     # find inner and perturber
-    x1 = x[0:3];x2 = x[3:6];x3 = x[6:9]
-    v1 = v[0:3];v2 = v[3:6];v3 = v[6:9]
+    x1 = x[0:3]; x2 = x[3:6]; x3 = x[6:9]
+    v1 = v[0:3]; v2 = v[3:6]; v3 = v[6:9]
     if r13 / r12 > rmax:
         E = get_E(G, m1, x1, v1, m2, x2, v2, x3, v3, m3)
     elif r12 / r13 > rmax:
@@ -149,6 +153,7 @@ def is_system_broken(G, m1, m2, m3, x, v, rmax):
 def check_stopping_conditions(s, x, v, t, N):
     fin_reason = REASON_NONE
 
+    # TODO: might be removed
     if np.isnan(t):
         print('[BREAK] t is nan')
         fin_reason = TNAN
@@ -330,7 +335,7 @@ def advance_state(s, N):
         # Time (update t)
         t += dt
 
-        # update iterations index
+        # Index (update iterations index)
         s.i += 1
 
     if s.i == N:
