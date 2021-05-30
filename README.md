@@ -4,6 +4,8 @@ Code for our paper ["Extreme close approaches in hierarchical triple systems wit
 
 The code includes the simulations done in the paper.
 
+### Is my system about to collide?
+
 For a quick prediction if your three-body system is about to collide simply plug your initial conditions 
 in [predict_collision_from_initial_conditions.py](https://github.com/nivha/three_body_integration/blob/master/predict_collision_from_initial_conditions.py)
 
